@@ -1,0 +1,123 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../utils/constants';
+import { formatLargeNumber } from '../utils/helpers';
+
+const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label }) => {
+  const scale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.3, useNativeDriver: true, speed: 40 }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40 }),
+    ]).start();
+    onPress?.();
+  };
+
+  return (
+    <TouchableOpacity style={styles.btn} onPress={handlePress} activeOpacity={0.8}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={isActive ? activeIcon : icon}
+          size={32}
+          color={isActive ? color : '#fff'}
+        />
+      </Animated.View>
+      {count != null && (
+        <Text style={styles.count}>{formatLargeNumber(count)}</Text>
+      )}
+      {label && <Text style={styles.label}>{label}</Text>}
+    </TouchableOpacity>
+  );
+};
+
+const EngagementButtons = ({
+  isLiked,
+  isFavorited,
+  likesCount = 0,
+  commentsCount = 0,
+  onLike,
+  onFavorite,
+  onComment,
+  onEnroll,
+  isEnrolled,
+  showEnroll = false,
+  style,
+}) => {
+  return (
+    <View style={[styles.container, style]}>
+      {showEnroll && !isEnrolled && (
+        <TouchableOpacity style={styles.enrollBtn} onPress={onEnroll} activeOpacity={0.85}>
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+      <ActionBtn
+        icon="heart-outline"
+        activeIcon="heart"
+        isActive={isLiked}
+        count={likesCount}
+        color={COLORS.primary}
+        onPress={onLike}
+      />
+      <ActionBtn
+        icon="bookmark-outline"
+        activeIcon="bookmark"
+        isActive={isFavorited}
+        color={COLORS.secondary}
+        onPress={onFavorite}
+        label="Save"
+      />
+      <ActionBtn
+        icon="chatbubble-outline"
+        activeIcon="chatbubble"
+        isActive={false}
+        count={commentsCount}
+        color={COLORS.secondary}
+        onPress={onComment}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    gap: 20,
+  },
+  btn: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  count: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  label: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  enrollBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+});
+
+export default EngagementButtons;
