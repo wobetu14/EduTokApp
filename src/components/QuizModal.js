@@ -114,19 +114,18 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
 
   const handleNext = useCallback(() => {
     if (currentQ + 1 >= total) {
-      const finalScore = score + (selected === question.correctAnswer ? 0 : 0);
-      const actualScore = score + (answered && selected === question.correctAnswer ? 1 : 0);
-      const pct = Math.round((actualScore / total) * 100);
+      // score state is already updated by handleAnswer before Next is pressed
+      const pct = Math.round((score / total) * 100);
       const didPass = pct >= 60;
       setFinished(true);
       setPassed(didPass);
-      if (didPass) onPass?.(quiz.id, actualScore, pct);
+      if (didPass) onPass?.(quiz.id, score, pct);
     } else {
       setCurrentQ((q) => q + 1);
       setSelected(null);
       setAnswered(false);
     }
-  }, [currentQ, total, score, selected, question, answered, quiz, onPass]);
+  }, [currentQ, total, score, quiz, onPass]);
 
   if (!quiz || !visible) return null;
 

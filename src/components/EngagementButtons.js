@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constants';
 import { formatLargeNumber } from '../utils/helpers';
@@ -40,6 +40,7 @@ const EngagementButtons = ({
   onLike,
   onFavorite,
   onComment,
+  onShare,
   onEnroll,
   isEnrolled,
   showEnroll = false,
@@ -76,6 +77,14 @@ const EngagementButtons = ({
         color={COLORS.secondary}
         onPress={onComment}
       />
+      <ActionBtn
+        icon="share-social-outline"
+        activeIcon="share-social"
+        isActive={false}
+        color={COLORS.secondary}
+        onPress={onShare}
+        label="Share"
+      />
     </View>
   );
 };
@@ -88,6 +97,9 @@ const styles = StyleSheet.create({
   btn: {
     alignItems: 'center',
     gap: 4,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   count: {
     color: '#fff',
