@@ -36,7 +36,9 @@ const EngagementButtons = ({
   isLiked,
   isFavorited,
   likesCount = 0,
+  favoritesCount = 0,
   commentsCount = 0,
+  sharesCount = 0,
   onLike,
   onFavorite,
   onComment,
@@ -65,9 +67,9 @@ const EngagementButtons = ({
         icon="bookmark-outline"
         activeIcon="bookmark"
         isActive={isFavorited}
+        count={favoritesCount}
         color={COLORS.secondary}
         onPress={onFavorite}
-        label="Save"
       />
       <ActionBtn
         icon="chatbubble-outline"
@@ -81,9 +83,9 @@ const EngagementButtons = ({
         icon="share-social-outline"
         activeIcon="share-social"
         isActive={false}
+        count={sharesCount}
         color={COLORS.secondary}
         onPress={onShare}
-        label="Share"
       />
     </View>
   );

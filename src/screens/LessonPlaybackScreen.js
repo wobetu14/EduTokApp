@@ -21,8 +21,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Video } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import VideoPlayer from '../components/VideoPlayer';
 import { COLORS, SIZES } from '../utils/constants';
 import { formatDuration } from '../utils/helpers';
 import EngagementButtons from '../components/EngagementButtons';
@@ -62,41 +62,26 @@ const ImageContent = ({ lesson }) => (
   </View>
 );
 
-const VideoContent = ({ lesson, active }) => {
-  const videoRef = useRef(null);
-  const [status, setStatus] = useState({});
-
-  useEffect(() => {
-    if (!active && videoRef.current) {
-      videoRef.current.pauseAsync().catch(() => {});
-    }
-  }, [active]);
-
-  return (
-    <View style={styles.videoContainer}>
-      <Video
-        ref={videoRef}
-        source={{ uri: lesson.content.videoUri }}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
-        shouldPlay={active}
-        isLooping={false}
-        onPlaybackStatusUpdate={setStatus}
-        useNativeControls
-      />
-    </View>
-  );
-};
+const VideoContent = ({ lesson, active, onProgress }) => (
+  <View style={styles.videoContainer}>
+    <VideoPlayer
+      youtubeId={lesson.content.youtubeId}
+      active={active}
+      onProgress={onProgress}
+    />
+  </View>
+);
 
 // --- Lesson slide ---
 const LessonSlide = ({
   lesson, active, isLiked, isFavorited, isEnrolled,
   onLike, onFavorite, onComment, onShare, onEnroll,
   commentCount, courseTitle, lessonIndex, totalLessons,
+  videoProgress, onVideoProgress,
 }) => {
   const renderContent = () => {
     switch (lesson.type) {
-      case 'video': return <VideoContent lesson={lesson} active={active} />;
+      case 'video': return <VideoContent lesson={lesson} active={active} onProgress={onVideoProgress} />;
       case 'image': return <ImageContent lesson={lesson} />;
       default:      return <TextContent lesson={lesson} />;
     }
@@ -112,6 +97,13 @@ const LessonSlide = ({
         style={styles.bottomOverlay}
         pointerEvents="none"
       />
+
+      {/* Video watch progress bar */}
+      {lesson.type === 'video' && (
+        <View style={styles.progressTrack} pointerEvents="none">
+          <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
+        </View>
+      )}
 
       {/* Bottom-left info */}
       <View style={styles.bottomLeft}>
@@ -148,8 +140,10 @@ const LessonSlide = ({
         <EngagementButtons
           isLiked={isLiked}
           isFavorited={isFavorited}
-          likesCount={undefined}
-          commentsCount={commentCount}
+          likesCount={lesson.likesCount + (isLiked ? 1 : 0)}
+          favoritesCount={lesson.savesCount + (isFavorited ? 1 : 0)}
+          commentsCount={lesson.commentsCount ?? commentCount}
+          sharesCount={lesson.sharesCount}
           onLike={onLike}
           onFavorite={onFavorite}
           onComment={onComment}
@@ -182,6 +176,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const [pendingNext, setPendingNext] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   const lesson = lessons[currentIndex];
   const translateY = useRef(new Animated.Value(0)).current;
@@ -190,8 +185,9 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const tryGoNextRef = useRef(null);
   const goToPrevRef = useRef(null);
 
-  // Mark lesson complete on view
+  // Mark lesson complete and reset video progress when lesson changes
   useEffect(() => {
+    setVideoProgress(0);
     if (lesson && user) {
       completeLesson(lesson.id, courseId, lesson.duration);
     }
@@ -317,6 +313,8 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
           courseTitle={course?.title || ''}
           lessonIndex={currentIndex}
           totalLessons={lessons.length}
+          videoProgress={videoProgress}
+          onVideoProgress={setVideoProgress}
         />
       </Animated.View>
 
@@ -431,6 +429,19 @@ const styles = StyleSheet.create({
   videoContainer: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  progressTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderRadius: 1.5,
   },
   // Overlay
   bottomOverlay: {

@@ -22,8 +22,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Video } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import VideoPlayer from '../components/VideoPlayer';
 import { COLORS, SIZES } from '../utils/constants';
 import { formatDuration, shuffle, formatLargeNumber } from '../utils/helpers';
 import QuizModal from '../components/QuizModal';
@@ -57,30 +57,13 @@ const ImageContent = ({ lesson }) => (
   </View>
 );
 
-const VideoContent = ({ lesson, active }) => {
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    if (!active && videoRef.current) {
-      videoRef.current.pauseAsync().catch(() => {});
-    }
-  }, [active]);
-
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <Video
-        ref={videoRef}
-        source={{ uri: lesson.content.videoUri }}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
-        shouldPlay={active}
-        isLooping
-        useNativeControls={false}
-        onPlaybackStatusUpdate={() => {}}
-      />
-    </View>
-  );
-};
+const VideoContent = ({ lesson, active, onProgress }) => (
+  <VideoPlayer
+    youtubeId={lesson.content.youtubeId}
+    active={active}
+    onProgress={onProgress}
+  />
+);
 
 // --- Engagement action button ---
 
@@ -128,6 +111,7 @@ const ForYouScreen = ({ navigation }) => {
   const [pendingNext, setPendingNext] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -181,8 +165,9 @@ const ForYouScreen = ({ navigation }) => {
   const lesson = current?.lesson;
   const course = current?.course;
 
-  // Mark lesson complete when it becomes active
+  // Mark lesson complete and reset video progress when lesson changes
   useEffect(() => {
+    setVideoProgress(0);
     if (lesson && course) {
       completeLesson(lesson.id, course.id, lesson.duration);
     }
@@ -286,7 +271,9 @@ const ForYouScreen = ({ navigation }) => {
         {...panResponder.panHandlers}
       >
         {/* Lesson content */}
-        {lesson.type === 'video' && <VideoContent lesson={lesson} active={videoActive} />}
+        {lesson.type === 'video' && (
+          <VideoContent lesson={lesson} active={videoActive} onProgress={setVideoProgress} />
+        )}
         {lesson.type === 'image' && <ImageContent lesson={lesson} />}
         {lesson.type === 'text' && <TextContent lesson={lesson} />}
 
@@ -303,6 +290,13 @@ const ForYouScreen = ({ navigation }) => {
           style={styles.bottomGradient}
           pointerEvents="none"
         />
+
+        {/* Video watch progress bar */}
+        {lesson.type === 'video' && (
+          <View style={styles.progressTrack} pointerEvents="none">
+            <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
+          </View>
+        )}
 
         {/* Feed position counter (top-right) */}
         <View style={[styles.counter, { top: insets.top + 10 }]}>
@@ -370,25 +364,26 @@ const ForYouScreen = ({ navigation }) => {
           <ActionBtn
             icon="heart-outline" activeIcon="heart"
             isActive={isLiked(lesson.id)} color={COLORS.primary}
+            count={lesson.likesCount + (isLiked(lesson.id) ? 1 : 0)}
             onPress={() => toggleLike(lesson.id)}
           />
           <ActionBtn
             icon="bookmark-outline" activeIcon="bookmark"
             isActive={isFavorited(lesson.id)} color={COLORS.secondary}
+            count={lesson.savesCount + (isFavorited(lesson.id) ? 1 : 0)}
             onPress={() => toggleFavorite(lesson.id)}
-            label="Save"
           />
           <ActionBtn
             icon="chatbubble-outline" activeIcon="chatbubble"
             isActive={false} color={COLORS.secondary}
+            count={lesson.commentsCount}
             onPress={() => setShowComments(true)}
-            label="Chat"
           />
           <ActionBtn
             icon="share-social-outline" activeIcon="share-social"
             isActive={false} color={COLORS.secondary}
+            count={lesson.sharesCount}
             onPress={handleShare}
-            label="Share"
           />
         </View>
       </Animated.View>
@@ -604,6 +599,20 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  // Video progress bar
+  progressTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderRadius: 1.5,
   },
   // Comments
   commentsWrap: {

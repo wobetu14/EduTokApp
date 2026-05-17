@@ -1,5 +1,17 @@
 // Seed data for EduTok (AsyncStorage-backed mock backend)
 
+const engagementCounts = (id) => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  h = Math.abs(h);
+  return {
+    likesCount: (h % 8000) + 2000,
+    savesCount: Math.floor(((h % 8000) + 2000) * 0.38),
+    commentsCount: (h % 300) + 30,
+    sharesCount: (h % 1000) + 100,
+  };
+};
+
 export const ORGANIZATIONS = [
   {
     id: 'org1',
@@ -164,6 +176,7 @@ const makeTextLesson = (id, courseId, order, title, body, duration, hasQuiz, qui
   thumbnail: `https://picsum.photos/seed/${id}thumb/400/300`,
   hasQuiz: !!quiz,
   quiz: quiz || null,
+  ...engagementCounts(id),
 });
 
 const makeImageLesson = (id, courseId, order, title, imageKey, caption, duration, hasQuiz, quiz) => ({
@@ -180,22 +193,24 @@ const makeImageLesson = (id, courseId, order, title, imageKey, caption, duration
   thumbnail: `https://picsum.photos/seed/${id}thumb/400/300`,
   hasQuiz: !!quiz,
   quiz: quiz || null,
+  ...engagementCounts(id),
 });
 
-const makeVideoLesson = (id, courseId, order, title, duration, hasQuiz, quiz) => ({
+const makeVideoLesson = (id, courseId, order, title, youtubeId, duration, hasQuiz, quiz) => ({
   id,
   courseId,
   order,
   title,
   type: 'video',
   content: {
-    videoUri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    youtubeId,
     thumbnailUri: `https://picsum.photos/seed/${id}vid/400/300`,
   },
   duration,
   thumbnail: `https://picsum.photos/seed/${id}thumb/400/300`,
   hasQuiz: !!quiz,
   quiz: quiz || null,
+  ...engagementCounts(id),
 });
 
 export const LESSONS = [
@@ -247,7 +262,7 @@ Python uses indentation (spaces) to define code blocks, making it naturally read
     }
   ),
 
-  makeVideoLesson('l3', 'course1', 3, 'Loops & Conditionals', 150,
+  makeVideoLesson('l3', 'course1', 3, 'Loops & Conditionals', 'rfscVS0vtbw', 150,
     true,
     {
       id: 'q2',
@@ -359,7 +374,7 @@ Think of HTML as the bones of a building — it gives structure but not style.`,
     null
   ),
 
-  makeVideoLesson('l7', 'course2', 3, 'JavaScript: Adding Interactivity', 170,
+  makeVideoLesson('l7', 'course2', 3, 'JavaScript: Adding Interactivity', 'DHjqpvDnNGE', 170,
     true,
     {
       id: 'q4',
@@ -423,7 +438,7 @@ AI is not magic — it's pattern recognition at massive scale, powered by data a
     }
   ),
 
-  makeVideoLesson('l10', 'course3', 3, 'Neural Networks in 3 Minutes', 160,
+  makeVideoLesson('l10', 'course3', 3, 'Neural Networks in 3 Minutes', 'BgBguclRSVo', 160,
     false,
     null
   ),
@@ -513,7 +528,7 @@ Limits are the foundation of calculus. Every derivative and integral is defined 
     }
   ),
 
-  makeVideoLesson('l14', 'course4', 3, 'Integrals: The Area Under the Curve', 155,
+  makeVideoLesson('l14', 'course4', 3, 'Integrals: The Area Under the Curve', 'WUvTyaaNkzM', 155,
     true,
     {
       id: 'q8',
@@ -587,7 +602,7 @@ This is why EduTok uses quizzes after every lesson — it's neuroscience, not ju
     }
   ),
 
-  makeVideoLesson('l17', 'course5', 3, 'Growth Mindset vs Fixed Mindset', 150,
+  makeVideoLesson('l17', 'course5', 3, 'Growth Mindset vs Fixed Mindset', '_X0mgOOSpLU', 150,
     false,
     null
   ),
@@ -681,7 +696,7 @@ This analysis reveals why Netflix invests heavily in original content — to red
     null
   ),
 
-  makeVideoLesson('l21', 'course6', 3, 'Blue Ocean Strategy', 145,
+  makeVideoLesson('l21', 'course6', 3, 'Blue Ocean Strategy', 'iZdMF5uGVXM', 145,
     true,
     {
       id: 'q12',
@@ -748,7 +763,7 @@ This analysis reveals why Netflix invests heavily in original content — to red
     null
   ),
 
-  makeVideoLesson('l24', 'course7', 3, 'Index Funds: Investing for Beginners', 165,
+  makeVideoLesson('l24', 'course7', 3, 'Index Funds: Investing for Beginners', 'UKsaLdqvE6c', 165,
     true,
     {
       id: 'q14',
@@ -854,7 +869,7 @@ SEO results take 3-6 months but compound over time, unlike paid ads.`,
     null
   ),
 
-  makeVideoLesson('l28', 'course8', 3, 'Email Marketing That Converts', 150,
+  makeVideoLesson('l28', 'course8', 3, 'Email Marketing That Converts', 'GxPcZL2XtOM', 150,
     true,
     {
       id: 'q16',

@@ -8,13 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Start development server
 npx expo start
 
+# Start with tunnel (for physical device testing over any network)
+npx expo start --tunnel --port 8083
+
 # Run on specific platform
 npx expo start --android
 npx expo start --ios
 npx expo start --web
 ```
 
+Tunnel URL (Expo Go): `exp://xmm-imw-anonymous-8083.exp.direct`
+`@expo/ngrok` is installed as a dev dependency — required for `--tunnel` to work.
+
 No test suite or linter is configured.
+
+**Git remote:** `https://github.com/wobetu14/EduTokApp.git` (branch: `master`)
 
 ## Project Overview
 
@@ -69,7 +77,20 @@ Three-tier hierarchy: **Organization → Course → Lesson**.
 ## Screens & Features
 
 ### Tab 1 — For You (`ForYouScreen`)
-Personalized course feed based on the user's selected interest categories (set during onboarding, updated by likes/favorites). Categories: Engineering, Math, Digital, Art, Business, AI, Psychology, Finance (expandable).
+**Full-screen TikTok-style lesson feed** — not a course card list. Each item is one lesson rendered full-screen with swipe-up/swipe-down navigation (PanResponder, same pattern as LessonPlayback).
+
+Feed is built from all lessons across all courses, personalized by user preferences (preferred categories first, shuffled within each group). Computed once from `useMemo` on mount.
+
+Layout mirrors TikTok:
+- Bottom-left: course title (tappable → `CourseProfileScreen`) + lesson title + type/duration/quiz badges + "Swipe up" hint
+- Right column: `+` enroll button (hidden if enrolled), Like, Save, Chat, Share
+- Top-right: feed position counter (e.g. "4 / 28")
+
+Quiz gate fires before advancing when `lesson.hasQuiz && !isQuizPassed(lesson.quiz.id)`. Share uses React Native's `Share.share()`.
+
+**PanResponder stale-closure pattern** (used here and in LessonPlayback): create the responder once with `useRef(PanResponder.create(...)).current`, then keep mutable refs (`tryGoNextRef`, `animateToPrevRef`, `currentIndexRef`) updated every render. The panResponder callbacks read from refs, never from stale closures.
+
+Video pauses during slide transitions via `videoActive` state passed as `active` prop to `VideoContent`.
 
 ### Tab 2 — Explore (`ExploreScreen`)
 Card-based grid of all available courses. Each card shows thumbnail, title, and organization name. Tapping navigates to `CourseProfileScreen`.
@@ -92,13 +113,15 @@ User dashboard with:
 - Tap lesson thumbnail → `LessonPlaybackScreen`
 
 ### Lesson Playback (`LessonPlaybackScreen`)
-Full-screen immersive view (TikTok-style):
-- Renders text, image, or video lessons
-- Swipe up/down to navigate between lessons; quiz gate fires before advancing
-- Bottom-left: course title + progress indicator
-- "+" enrollment button (hidden if already enrolled)
-- Right-side vertical engagement stack: Like (heart), Favorite (bookmark), Comment (opens thread)
-- Marks lesson completed on exit/advance
+Full-screen immersive view — plays lessons from a single course sequentially (accessed from `CourseProfileScreen`).
+- Renders text, image, or video lessons full-screen
+- Swipe up/down via PanResponder (same stale-closure-safe ref pattern as ForYou)
+- Quiz gate fires before advancing (`hasQuiz && !isQuizPassed`)
+- Bottom-left: course title + "Lesson X of Y" + progress dots
+- Right-side engagement stack: Like, Save, Comment, Share — all via `EngagementButtons`
+- Share uses `Share.share()` from React Native
+- Marks lesson completed on view (`completeLesson` called in `useEffect` on `currentIndex` change)
+- Video pauses during transitions via `videoActive` state
 
 ### Organization Profile (`OrganizationProfileScreen`)
 - Org name, logo, description
@@ -123,8 +146,9 @@ Full-screen immersive view (TikTok-style):
 ## Engagement & Gamification
 
 - **Like / Favorite** — toggleable, influences For You personalization and saves to learning history
-- **Comments** — lesson-level comment threads (peer discussion)
-- **Quiz gate** — displays before next lesson unlocks; celebratory animation on pass; retry on fail
+- **Comments** — lesson-level comment threads (peer discussion); opens as bottom-sheet modal
+- **Share** — `Share.share()` sends lesson title + course name as a native share sheet
+- **Quiz gate** — displays before next lesson unlocks; celebratory animation on pass; retry on fail. `QuizModal` score is computed from `score` state (already updated by `handleAnswer` before Next is pressed — do not add to it again in `handleNext`)
 - **Streak counter** — days with ≥1 lesson completed; displayed on profile
 - **Badges** — milestone awards (e.g., "Week Warrior," "Quiz Master," "100 Lessons Learned")
 - **Confetti / celebration** — on quiz pass or course completion
@@ -146,7 +170,7 @@ Full-screen immersive view (TikTok-style):
 ## Phase Status
 
 ### Phase 1 — MVP (implemented)
-Authentication, onboarding, For You + Explore tabs, lesson playback (text/image/video), like/favorite, quiz modal (truefalse, multipleChoice, imageMatching), course profile, one-tap enrollment, user dashboard, search, AsyncStorage mock data, i18n (EN + AM), streak tracking.
+Authentication, onboarding, For You tab (TikTok-style full-screen lesson feed), Explore tab, lesson playback (text/image/video) with working swipe navigation, like/favorite/share, quiz modal (truefalse, multipleChoice, imageMatching), course profile, one-tap enrollment, user dashboard, search, AsyncStorage mock data, i18n (EN + AM), streak tracking.
 
 ### Phase 2 — Planned
 Full comment threads with nested replies, organization directory tab, achievements/badges system, video upload 3-minute enforcement, advanced analytics, daily streak celebrations, profile customization, offline video download, push notifications, high-contrast/accessibility modes.

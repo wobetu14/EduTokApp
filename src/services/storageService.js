@@ -22,13 +22,16 @@ export const removeKey = async (key) => {
   await AsyncStorage.removeItem(key);
 };
 
-// --- Seed initial data if not present ---
+const SEED_VERSION = '2'; // bump when mockData schema changes
+
+// --- Seed initial data if not present or version changed ---
 export const seedDataIfNeeded = async () => {
-  const existing = await AsyncStorage.getItem(STORAGE_KEYS.courses);
-  if (!existing) {
+  const storedVersion = await AsyncStorage.getItem('seed_version');
+  if (storedVersion !== SEED_VERSION) {
     await storeJSON(STORAGE_KEYS.organizations, ORGANIZATIONS);
     await storeJSON(STORAGE_KEYS.courses, COURSES);
     await storeJSON(STORAGE_KEYS.lessons, LESSONS);
+    await AsyncStorage.setItem('seed_version', SEED_VERSION);
   }
 };
 
