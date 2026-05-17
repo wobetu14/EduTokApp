@@ -8,17 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Start development server
 npx expo start
 
-# Start with tunnel (for physical device testing over any network)
-npx expo start --tunnel --port 8083
+# Run for web (browser)
+npx expo start --web --port 8084
 
 # Run on specific platform
 npx expo start --android
 npx expo start --ios
-npx expo start --web
+
+# Tunnel (physical device over any network) — requires ngrok authtoken
+# Register at https://dashboard.ngrok.com and run: npx ngrok authtoken YOUR_TOKEN
+npx expo start --tunnel --port 8084
 ```
 
-Tunnel URL (Expo Go): `exp://xmm-imw-anonymous-8083.exp.direct`
-`@expo/ngrok` is installed as a dev dependency — required for `--tunnel` to work.
+`@expo/ngrok` is installed as a dev dependency — required for `--tunnel`. ngrok now requires a free account + authtoken to work.
 
 No test suite or linter is configured.
 
@@ -57,11 +59,11 @@ Two `useReducer`-backed React Context providers — no Redux or Zustand:
 
 The app runs entirely on-device with **AsyncStorage** — no remote backend. `apiService.js` is designed to be swapped for real HTTP calls without changing call sites.
 
-- `src/services/storageService.js` — AsyncStorage wrapper; seeds `mockData.js` on first launch
+- `src/services/storageService.js` — AsyncStorage wrapper; seeds `mockData.js` on launch if `SEED_VERSION` has changed
 - `src/services/apiService.js` — abstraction layer with 300–400ms artificial delays; contexts only call this, never AsyncStorage directly
 - `src/services/mockData.js` — all seed content (orgs, courses, lessons, quizzes)
 
-To add new content, edit `mockData.js`. The seed runs only on first launch; to force a re-seed during development, clear AsyncStorage.
+To add new content, edit `mockData.js` and bump `SEED_VERSION` in `storageService.js` — the app will automatically re-seed on next launch. Do not manually clear AsyncStorage unless debugging auth/progress state.
 
 ### Content Model
 
@@ -70,7 +72,8 @@ Three-tier hierarchy: **Organization → Course → Lesson**.
 - Lessons have a `type` field: `text`, `image`, or `video` (3-minute max for video).
 - Each lesson has an optional `quiz` object. `LessonPlaybackScreen` triggers `QuizModal` before advancing to the next lesson.
 - Quiz types: `truefalse`, `multipleChoice`, `imageMatching`.
-- Engagement fields per lesson: `likes`, `liked_by_user`, `favorites`, `favorited_by_user`, `comments_count`, `has_quiz`.
+- Engagement fields per lesson: `likesCount`, `savesCount`, `commentsCount`, `sharesCount` — generated deterministically from lesson ID via `engagementCounts()` in `mockData.js`.
+- Video lessons store a `content.youtubeId` (11-char YouTube video ID). Playback uses `VideoPlayer` (`src/components/VideoPlayer.js`) which embeds YouTube via `react-native-webview` with the IFrame API. To swap a video, update the `youtubeId` in the `makeVideoLesson()` call and bump `SEED_VERSION`.
 
 ---
 
@@ -90,7 +93,9 @@ Quiz gate fires before advancing when `lesson.hasQuiz && !isQuizPassed(lesson.qu
 
 **PanResponder stale-closure pattern** (used here and in LessonPlayback): create the responder once with `useRef(PanResponder.create(...)).current`, then keep mutable refs (`tryGoNextRef`, `animateToPrevRef`, `currentIndexRef`) updated every render. The panResponder callbacks read from refs, never from stale closures.
 
-Video pauses during slide transitions via `videoActive` state passed as `active` prop to `VideoContent`.
+Video pauses during slide transitions via `videoActive` state passed as `active` prop to `VideoPlayer`. Progress bar (red, bottom edge) tracks watch position via postMessage from the YouTube IFrame API. Progress resets to 0 on lesson change.
+
+Engagement buttons show **counts** (not labels) for all four actions: likes, saves, chats, shares. Like and Save counts are `lesson.likesCount + 1` / `lesson.savesCount + 1` when the user has toggled them on.
 
 ### Tab 2 — Explore (`ExploreScreen`)
 Card-based grid of all available courses. Each card shows thumbnail, title, and organization name. Tapping navigates to `CourseProfileScreen`.
@@ -118,10 +123,10 @@ Full-screen immersive view — plays lessons from a single course sequentially (
 - Swipe up/down via PanResponder (same stale-closure-safe ref pattern as ForYou)
 - Quiz gate fires before advancing (`hasQuiz && !isQuizPassed`)
 - Bottom-left: course title + "Lesson X of Y" + progress dots
-- Right-side engagement stack: Like, Save, Comment, Share — all via `EngagementButtons`
+- Right-side engagement stack: Like, Save, Comment, Share — all via `EngagementButtons` (counts shown, no labels)
 - Share uses `Share.share()` from React Native
 - Marks lesson completed on view (`completeLesson` called in `useEffect` on `currentIndex` change)
-- Video pauses during transitions via `videoActive` state
+- Video pauses during transitions via `videoActive` state; watch progress bar shown at bottom for video lessons
 
 ### Organization Profile (`OrganizationProfileScreen`)
 - Org name, logo, description
@@ -171,6 +176,12 @@ Full-screen immersive view — plays lessons from a single course sequentially (
 
 ### Phase 1 — MVP (implemented)
 Authentication, onboarding, For You tab (TikTok-style full-screen lesson feed), Explore tab, lesson playback (text/image/video) with working swipe navigation, like/favorite/share, quiz modal (truefalse, multipleChoice, imageMatching), course profile, one-tap enrollment, user dashboard, search, AsyncStorage mock data, i18n (EN + AM), streak tracking.
+
+**Phase 1 additions:**
+- YouTube video playback via `react-native-webview` + IFrame API (replaces broken direct MP4 URLs)
+- Video watch progress bar (red, bottom edge, real-time from YouTube player)
+- Engagement buttons show numeric counts for all four actions (likes, saves, comments, shares); no text labels
+- `SEED_VERSION` auto-reseed mechanism in `storageService.js`
 
 ### Phase 2 — Planned
 Full comment threads with nested replies, organization directory tab, achievements/badges system, video upload 3-minute enforcement, advanced analytics, daily streak celebrations, profile customization, offline video download, push notifications, high-contrast/accessibility modes.
