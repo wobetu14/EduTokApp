@@ -13,10 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../utils/constants';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
+import { useResponsive } from '../utils/responsive';
 
 const OrganizationProfileScreen = ({ route, navigation }) => {
   const { orgId } = route.params;
   const { organizations, courses } = useCourses();
+  const { heroH, hPad } = useResponsive();
 
   const org = useMemo(() => organizations.find((o) => o.id === orgId), [organizations, orgId]);
   const orgCourses = useMemo(
@@ -32,7 +34,7 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero banner */}
-      <View style={styles.hero}>
+      <View style={[styles.hero, { height: heroH }]}>
         <LinearGradient
           colors={['#1A1A2E', '#16213E', COLORS.card]}
           style={StyleSheet.absoluteFillObject}
@@ -56,7 +58,7 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
       </View>
 
       {/* Stats */}
-      <View style={styles.statsRow}>
+      <View style={[styles.statsRow, { marginHorizontal: hPad }]}>
         {[
           { label: 'Courses', value: orgCourses.length, icon: 'book' },
           { label: 'Lessons', value: totalLessons, icon: 'play-circle' },
@@ -97,7 +99,6 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   hero: {
-    height: 240,
     justifyContent: 'flex-end',
     position: 'relative',
   },
@@ -148,7 +149,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.card,
     borderRadius: 16,
-    marginHorizontal: 16,
     marginTop: -12,
     paddingVertical: 16,
     justifyContent: 'space-around',

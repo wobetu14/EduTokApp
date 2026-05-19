@@ -9,7 +9,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Modal,
   Animated,
@@ -30,8 +29,8 @@ import QuizModal from '../components/QuizModal';
 import CommentThread from '../components/CommentThread';
 import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../utils/responsive';
 
-const { width: W, height: H } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 50;
 
 // --- Content renderers ---
@@ -47,19 +46,47 @@ const TextContent = ({ lesson }) => (
   </ScrollView>
 );
 
-const ImageContent = ({ lesson }) => (
-  <View style={StyleSheet.absoluteFill}>
-    <Image
-      source={{ uri: lesson.content.imageUri }}
-      style={StyleSheet.absoluteFill}
-      resizeMode="cover"
-    />
-  </View>
-);
+const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const images = lesson.content.images ?? [
+    { uri: lesson.content.imageUri, caption: lesson.content.caption },
+  ];
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
+        onMomentumScrollEnd={(e) => {
+          setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / slideWidth));
+        }}
+      >
+        {images.map((item, i) => (
+          <View key={i} style={{ width: slideWidth, height: slideHeight }}>
+            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            {item.caption ? (
+              <View style={styles.captionBox}>
+                <Text style={styles.captionText}>{item.caption}</Text>
+              </View>
+            ) : null}
+          </View>
+        ))}
+      </ScrollView>
+      {images.length > 1 && (
+        <View style={styles.imgDots} pointerEvents="none">
+          {images.map((_, i) => (
+            <View key={i} style={[styles.imgDot, i === activeIdx && styles.imgDotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
 
 const VideoContent = ({ lesson, active, onProgress }) => (
   <VideoPlayer
-    youtubeId={lesson.content.youtubeId}
+    videoUri={lesson.content.videoUri}
     active={active}
     onProgress={onProgress}
   />
@@ -105,7 +132,16 @@ const ForYouScreen = ({ navigation }) => {
   } = useCourses();
 
   const insets = useSafeAreaInsets();
+  const { W, H, commentsH } = useResponsive();
+
+  // TikTok-style: on wide screens (desktop/tablet web) center a phone-width column
+  const isWide = W >= 500;
+  const slideWidth = isWide ? Math.min(W, 430) : W;
+
   const [slideH, setSlideH] = useState(H);
+  // Hide Share when screen is too short to fit it comfortably
+  const showShare = slideH >= 700;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [pendingNext, setPendingNext] = useState(false);
@@ -119,16 +155,19 @@ const ForYouScreen = ({ navigation }) => {
   const currentIndexRef = useRef(0);
   const tryGoNextRef = useRef(null);
   const animateToPrevRef = useRef(null);
+  const currentLessonTypeRef = useRef(null);
 
-  // Build personalized lesson feed — preferred categories first, then shuffle within groups
+  // Build course-wise feed — one entry per course (first lesson as preview).
+  // Swiping navigates between courses, not individual lessons.
   const feed = useMemo(() => {
-    if (!lessons.length || !courses.length) return [];
+    if (!courses.length || !lessons.length) return [];
     const prefs = user?.preferences || [];
 
-    const items = lessons
-      .map((lesson) => {
-        const course = courses.find((c) => c.id === lesson.courseId);
-        if (!course) return null;
+    const items = courses
+      .map((course) => {
+        const courseLessons = lessons.filter((l) => l.courseId === course.id);
+        if (!courseLessons.length) return null;
+        const lesson = courseLessons[0]; // first lesson as the course preview
         const org = organizations.find((o) => o.id === course.organizationId);
         return { lesson, course, org };
       })
@@ -144,8 +183,14 @@ const ForYouScreen = ({ navigation }) => {
   // PanResponder — created once; reads mutable refs during gestures
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) => {
+        const type = currentLessonTypeRef.current;
+        if (type === 'text') return false;
+        if (type === 'image') {
+          return Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
+        }
+        return Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
+      },
       onPanResponderMove: (_, g) => {
         translateY.setValue(g.dy);
       },
@@ -216,6 +261,7 @@ const ForYouScreen = ({ navigation }) => {
   currentIndexRef.current = currentIndex;
   tryGoNextRef.current = tryGoNext;
   animateToPrevRef.current = animateToPrev;
+  currentLessonTypeRef.current = lesson?.type ?? null;
 
   const handleQuizPass = useCallback(
     async (quizId, score) => {
@@ -239,7 +285,7 @@ const ForYouScreen = ({ navigation }) => {
     } catch (_) {}
   }, [lesson, course]);
 
-  // --- Loading ---
+  // --- Loading / empty ---
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -260,133 +306,150 @@ const ForYouScreen = ({ navigation }) => {
   const enrolled = isEnrolled(course.id);
 
   return (
-    <View
-      style={styles.container}
-      onLayout={(e) => setSlideH(e.nativeEvent.layout.height)}
-    >
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <Animated.View
-        style={[styles.slide, { height: slideH, transform: [{ translateY }] }]}
-        {...panResponder.panHandlers}
+      {/* Centered slide column — full-width on mobile, phone-width on desktop/tablet */}
+      <View
+        style={[styles.slideColumn, { width: slideWidth }]}
+        onLayout={(e) => setSlideH(e.nativeEvent.layout.height)}
       >
-        {/* Lesson content */}
-        {lesson.type === 'video' && (
-          <VideoContent lesson={lesson} active={videoActive} onProgress={setVideoProgress} />
-        )}
-        {lesson.type === 'image' && <ImageContent lesson={lesson} />}
-        {lesson.type === 'text' && <TextContent lesson={lesson} />}
+        <Animated.View
+          style={[styles.slide, { width: slideWidth, height: slideH, transform: [{ translateY }] }]}
+          {...panResponder.panHandlers}
+        >
+          {/* Lesson content */}
+          {lesson.type === 'video' && (
+            <VideoContent key={lesson.id} lesson={lesson} active={videoActive} onProgress={setVideoProgress} />
+          )}
+          {lesson.type === 'image' && (
+            <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideH} />
+          )}
+          {lesson.type === 'text' && <TextContent key={lesson.id} lesson={lesson} />}
 
-        {/* Top gradient */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.45)', 'transparent']}
-          style={styles.topGradient}
-          pointerEvents="none"
-        />
+          {/* Top gradient */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'transparent']}
+            style={styles.topGradient}
+            pointerEvents="none"
+          />
 
-        {/* Bottom gradient */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.88)']}
-          style={styles.bottomGradient}
-          pointerEvents="none"
-        />
+          {/* Bottom gradient */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.88)']}
+            style={styles.bottomGradient}
+            pointerEvents="none"
+          />
 
-        {/* Video watch progress bar */}
-        {lesson.type === 'video' && (
-          <View style={styles.progressTrack} pointerEvents="none">
-            <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
-          </View>
-        )}
-
-        {/* Feed position counter (top-right) */}
-        <View style={[styles.counter, { top: insets.top + 10 }]}>
-          <Text style={styles.counterText}>{currentIndex + 1} / {feed.length}</Text>
-        </View>
-
-        {/* Bottom-left: course title + lesson info (TikTok username-style) */}
-        <View style={[styles.bottomLeft, { bottom: insets.bottom + 18 }]}>
-          {/* Course title — taps into CourseProfile */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.courseTitle} numberOfLines={1}>📚 {course.title}</Text>
-          </TouchableOpacity>
-
-          {/* Lesson title */}
-          <Text style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
-
-          {/* Type + duration + quiz badges */}
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Ionicons
-                name={
-                  lesson.type === 'video' ? 'play-circle' :
-                  lesson.type === 'image' ? 'image-outline' :
-                  'document-text-outline'
-                }
-                size={11}
-                color={COLORS.secondary}
-              />
-              <Text style={styles.badgeText}>{lesson.type}</Text>
+          {/* Video watch progress bar */}
+          {lesson.type === 'video' && (
+            <View style={styles.progressTrack} pointerEvents="none">
+              <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
             </View>
-            <Text style={styles.durationText}>{formatDuration(lesson.duration)}</Text>
-            {lesson.hasQuiz && (
-              <View style={[styles.badge, styles.badgeQuiz]}>
-                <Ionicons name="help-circle" size={11} color={COLORS.primary} />
-                <Text style={[styles.badgeText, { color: COLORS.primary }]}>Quiz</Text>
+          )}
+
+          {/* Feed position counter (top-right) */}
+          <View style={[styles.counter, { top: insets.top + 10 }]}>
+            <Text style={styles.counterText}>{currentIndex + 1} / {feed.length} courses</Text>
+          </View>
+
+          {/* Bottom-left: course title + lesson info */}
+          <View style={[styles.bottomLeft, { bottom: insets.bottom + 18 }]}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.courseTitle} numberOfLines={1}>📚 {course.title}</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
+
+            <View style={styles.badgeRow}>
+              <View style={styles.badge}>
+                <Ionicons
+                  name={
+                    lesson.type === 'video' ? 'play-circle' :
+                    lesson.type === 'image' ? 'image-outline' :
+                    'document-text-outline'
+                  }
+                  size={11}
+                  color={COLORS.secondary}
+                />
+                <Text style={styles.badgeText}>{lesson.type}</Text>
               </View>
+              <Text style={styles.durationText}>{formatDuration(lesson.duration)}</Text>
+              {lesson.hasQuiz && (
+                <View style={[styles.badge, styles.badgeQuiz]}>
+                  <Ionicons name="help-circle" size={11} color={COLORS.primary} />
+                  <Text style={[styles.badgeText, { color: COLORS.primary }]}>Quiz</Text>
+                </View>
+              )}
+            </View>
+
+            {currentIndex < feed.length - 1 && (
+              lesson.type === 'text' ? (
+                <TouchableOpacity
+                  style={styles.swipeHint}
+                  onPress={() => tryGoNextRef.current?.()}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.7)" />
+                  <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>Tap for next course</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.swipeHint}>
+                  <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
+                  <Text style={styles.swipeHintText}>Swipe up for next course</Text>
+                </View>
+              )
             )}
           </View>
 
-          {/* Swipe hint */}
-          {currentIndex < feed.length - 1 && (
-            <View style={styles.swipeHint}>
-              <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.swipeHintText}>Swipe up for next</Text>
-            </View>
-          )}
-        </View>
+          {/* Right side: enrollment indicator + engagement buttons */}
+          <View style={[styles.rightSide, { bottom: insets.bottom + 18 }]}>
+            {enrolled ? (
+              <View style={styles.courseThumb}>
+                <Image source={{ uri: course.thumbnail }} style={styles.courseThumbImg} resizeMode="cover" />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.enrollBtn}
+                onPress={() => enroll(course.id)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add" size={26} color="#fff" />
+              </TouchableOpacity>
+            )}
 
-        {/* Right side: enrollment + engagement buttons */}
-        <View style={[styles.rightSide, { bottom: insets.bottom + 18 }]}>
-          {/* Enroll "+" button — TikTok follow pattern */}
-          {!enrolled && (
-            <TouchableOpacity
-              style={styles.enrollBtn}
-              onPress={() => enroll(course.id)}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="add" size={26} color="#fff" />
-            </TouchableOpacity>
-          )}
-
-          <ActionBtn
-            icon="heart-outline" activeIcon="heart"
-            isActive={isLiked(lesson.id)} color={COLORS.primary}
-            count={lesson.likesCount + (isLiked(lesson.id) ? 1 : 0)}
-            onPress={() => toggleLike(lesson.id)}
-          />
-          <ActionBtn
-            icon="bookmark-outline" activeIcon="bookmark"
-            isActive={isFavorited(lesson.id)} color={COLORS.secondary}
-            count={lesson.savesCount + (isFavorited(lesson.id) ? 1 : 0)}
-            onPress={() => toggleFavorite(lesson.id)}
-          />
-          <ActionBtn
-            icon="chatbubble-outline" activeIcon="chatbubble"
-            isActive={false} color={COLORS.secondary}
-            count={lesson.commentsCount}
-            onPress={() => setShowComments(true)}
-          />
-          <ActionBtn
-            icon="share-social-outline" activeIcon="share-social"
-            isActive={false} color={COLORS.secondary}
-            count={lesson.sharesCount}
-            onPress={handleShare}
-          />
-        </View>
-      </Animated.View>
+            <ActionBtn
+              icon="heart-outline" activeIcon="heart"
+              isActive={isLiked(lesson.id)} color={COLORS.primary}
+              count={lesson.likesCount + (isLiked(lesson.id) ? 1 : 0)}
+              onPress={() => toggleLike(lesson.id)}
+            />
+            <ActionBtn
+              icon="bookmark-outline" activeIcon="bookmark"
+              isActive={isFavorited(lesson.id)} color={COLORS.secondary}
+              count={lesson.savesCount + (isFavorited(lesson.id) ? 1 : 0)}
+              onPress={() => toggleFavorite(lesson.id)}
+            />
+            <ActionBtn
+              icon="chatbubble-outline" activeIcon="chatbubble"
+              isActive={false} color={COLORS.secondary}
+              count={lesson.commentsCount}
+              onPress={() => setShowComments(true)}
+            />
+            {showShare && (
+              <ActionBtn
+                icon="share-social-outline" activeIcon="share-social"
+                isActive={false} color={COLORS.secondary}
+                count={lesson.sharesCount}
+                onPress={handleShare}
+              />
+            )}
+          </View>
+        </Animated.View>
+      </View>
 
       {/* Quiz modal */}
       <QuizModal
@@ -408,7 +471,7 @@ const ForYouScreen = ({ navigation }) => {
             style={styles.commentsBackdrop}
             onPress={() => setShowComments(false)}
           />
-          <View style={styles.commentsSheet}>
+          <View style={[styles.commentsSheet, { height: commentsH }]}>
             <CommentThread
               lessonId={lesson?.id}
               onClose={() => setShowComments(false)}
@@ -424,6 +487,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
+  },
+  slideColumn: {
+    flex: 1,
   },
   center: {
     flex: 1,
@@ -437,7 +504,6 @@ const styles = StyleSheet.create({
     fontSize: SIZES.base,
   },
   slide: {
-    width: W,
     backgroundColor: '#000',
     overflow: 'hidden',
   },
@@ -577,6 +643,19 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginBottom: 4,
   },
+  courseThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.success,
+    marginBottom: 4,
+  },
+  courseThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
   actionBtn: {
     alignItems: 'center',
     gap: 3,
@@ -614,6 +693,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 1.5,
   },
+  // Image lesson caption + dots
+  captionBox: {
+    position: 'absolute',
+    bottom: 220,
+    left: 16,
+    right: 90,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  captionText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: SIZES.sm,
+    lineHeight: 18,
+  },
+  imgDots: {
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  imgDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  imgDotActive: {
+    width: 16,
+    backgroundColor: '#fff',
+  },
   // Comments
   commentsWrap: {
     flex: 1,
@@ -623,9 +737,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  commentsSheet: {
-    height: H * 0.65,
-  },
+  commentsSheet: {},
 });
 
 export default ForYouScreen;

@@ -22,7 +22,7 @@ export const removeKey = async (key) => {
   await AsyncStorage.removeItem(key);
 };
 
-const SEED_VERSION = '2'; // bump when mockData schema changes
+const SEED_VERSION = '3'; // bump when mockData schema changes
 
 // --- Seed initial data if not present or version changed ---
 export const seedDataIfNeeded = async () => {

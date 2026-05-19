@@ -179,16 +179,14 @@ const makeTextLesson = (id, courseId, order, title, body, duration, hasQuiz, qui
   ...engagementCounts(id),
 });
 
-const makeImageLesson = (id, courseId, order, title, imageKey, caption, duration, hasQuiz, quiz) => ({
+// images: [{uri, caption}]
+const makeImageLesson = (id, courseId, order, title, images, duration, hasQuiz, quiz) => ({
   id,
   courseId,
   order,
   title,
   type: 'image',
-  content: {
-    imageUri: `https://picsum.photos/seed/${imageKey}/600/400`,
-    caption,
-  },
+  content: { images },
   duration,
   thumbnail: `https://picsum.photos/seed/${id}thumb/400/300`,
   hasQuiz: !!quiz,
@@ -196,14 +194,16 @@ const makeImageLesson = (id, courseId, order, title, imageKey, caption, duration
   ...engagementCounts(id),
 });
 
-const makeVideoLesson = (id, courseId, order, title, youtubeId, duration, hasQuiz, quiz) => ({
+const DEMO_VIDEO = 'https://res.cloudinary.com/djukmw9sx/video/upload/v1779186213/u01j2v7gklncoyeo3anl.mp4';
+
+const makeVideoLesson = (id, courseId, order, title, videoUri, duration, hasQuiz, quiz) => ({
   id,
   courseId,
   order,
   title,
   type: 'video',
   content: {
-    youtubeId,
+    videoUri,
     thumbnailUri: `https://picsum.photos/seed/${id}vid/400/300`,
   },
   duration,
@@ -237,8 +237,11 @@ Python uses indentation (spaces) to define code blocks, making it naturally read
   ),
 
   makeImageLesson('l2', 'course1', 2, 'Variables & Data Types',
-    'pytypes',
-    'Python has 4 core data types: int (whole numbers), float (decimals), str (text), and bool (True/False). Variables are created by simply assigning a value — no type declaration needed.\n\nExample:\n  age = 25          # int\n  height = 5.9      # float\n  name = "Alex"    # str\n  active = True    # bool',
+    [
+      { uri: 'https://picsum.photos/seed/pytypes1/600/900', caption: 'Python has 4 core data types: int, float, str, and bool.' },
+      { uri: 'https://picsum.photos/seed/pytypes2/600/900', caption: 'No declaration needed — just assign a value: age = 25, height = 5.9.' },
+      { uri: 'https://picsum.photos/seed/pytypes3/600/900', caption: 'Strings use quotes: name = "Alex". Booleans are True or False (capital first letter).' },
+    ],
     120,
     true,
     {
@@ -262,7 +265,7 @@ Python uses indentation (spaces) to define code blocks, making it naturally read
     }
   ),
 
-  makeVideoLesson('l3', 'course1', 3, 'Loops & Conditionals', 'rfscVS0vtbw', 150,
+  makeVideoLesson('l3', 'course1', 3, 'Loops & Conditionals', DEMO_VIDEO, 150,
     true,
     {
       id: 'q2',
@@ -367,14 +370,17 @@ Think of HTML as the bones of a building — it gives structure but not style.`,
   ),
 
   makeImageLesson('l6', 'course2', 2, 'CSS: Styling Your Pages',
-    'cssbox',
-    'CSS (Cascading Style Sheets) controls how HTML elements look. The "box model" is fundamental — every element is a box with content, padding, border, and margin. Understanding this unlocks precise layout control.',
+    [
+      { uri: 'https://picsum.photos/seed/cssbox1/600/900', caption: 'Every HTML element is a box with four layers: content, padding, border, and margin.' },
+      { uri: 'https://picsum.photos/seed/cssbox2/600/900', caption: 'Padding adds space inside the border. Margin adds space outside — between elements.' },
+      { uri: 'https://picsum.photos/seed/cssbox3/600/900', caption: 'Use box-sizing: border-box so padding & border don\'t increase the element\'s total size.' },
+    ],
     140,
     false,
     null
   ),
 
-  makeVideoLesson('l7', 'course2', 3, 'JavaScript: Adding Interactivity', 'DHjqpvDnNGE', 170,
+  makeVideoLesson('l7', 'course2', 3, 'JavaScript: Adding Interactivity', DEMO_VIDEO, 170,
     true,
     {
       id: 'q4',
@@ -413,8 +419,11 @@ AI is not magic — it's pattern recognition at massive scale, powered by data a
   ),
 
   makeImageLesson('l9', 'course3', 2, 'Machine Learning Explained',
-    'mldiagram',
-    'Machine Learning is a subset of AI where algorithms learn from data without being explicitly programmed. The three main types are Supervised Learning (labeled data), Unsupervised Learning (unlabeled data), and Reinforcement Learning (reward-based). Each approach suits different problem types.',
+    [
+      { uri: 'https://picsum.photos/seed/mltype1/600/900', caption: 'Supervised Learning: algorithms train on labeled data to predict outputs for new inputs.' },
+      { uri: 'https://picsum.photos/seed/mltype2/600/900', caption: 'Unsupervised Learning: find hidden patterns and clusters in unlabeled data.' },
+      { uri: 'https://picsum.photos/seed/mltype3/600/900', caption: 'Reinforcement Learning: an agent learns by trial-and-error to maximize cumulative rewards.' },
+    ],
     150,
     true,
     {
@@ -438,7 +447,7 @@ AI is not magic — it's pattern recognition at massive scale, powered by data a
     }
   ),
 
-  makeVideoLesson('l10', 'course3', 3, 'Neural Networks in 3 Minutes', 'BgBguclRSVo', 160,
+  makeVideoLesson('l10', 'course3', 3, 'Neural Networks in 3 Minutes', DEMO_VIDEO, 160,
     false,
     null
   ),
@@ -503,8 +512,10 @@ Limits are the foundation of calculus. Every derivative and integral is defined 
   ),
 
   makeImageLesson('l13', 'course4', 2, 'Derivatives: Rate of Change',
-    'derivative',
-    'A derivative measures how fast something changes. On a graph, it\'s the slope of the tangent line at any point. If f(x) = x², then f\'(x) = 2x — meaning at x=3, the function is rising at a rate of 6 units per unit of x. Derivatives power everything from physics to financial modeling.',
+    [
+      { uri: 'https://picsum.photos/seed/deriv1/600/900', caption: 'A derivative is the slope of the tangent line at any point on a curve — it measures rate of change.' },
+      { uri: 'https://picsum.photos/seed/deriv2/600/900', caption: 'For f(x) = x², the derivative is f\'(x) = 2x. At x=3 the function is rising at a rate of 6.' },
+    ],
     150,
     true,
     {
@@ -528,7 +539,7 @@ Limits are the foundation of calculus. Every derivative and integral is defined 
     }
   ),
 
-  makeVideoLesson('l14', 'course4', 3, 'Integrals: The Area Under the Curve', 'WUvTyaaNkzM', 155,
+  makeVideoLesson('l14', 'course4', 3, 'Integrals: The Area Under the Curve', DEMO_VIDEO, 155,
     true,
     {
       id: 'q8',
@@ -572,8 +583,10 @@ This is why EduTok uses quizzes after every lesson — it's neuroscience, not ju
   ),
 
   makeImageLesson('l16', 'course5', 2, 'Spaced Repetition',
-    'spacedrep',
-    'Spaced Repetition is the most evidence-backed learning technique. Instead of cramming, you review material at expanding intervals: 1 day → 3 days → 1 week → 2 weeks. Each review strengthens the memory trace. Apps like Anki use this algorithm automatically. You can achieve the same with a simple review calendar.',
+    [
+      { uri: 'https://picsum.photos/seed/srs1/600/900', caption: 'Review at expanding intervals — 1 day → 3 days → 1 week → 2 weeks — to fight forgetting.' },
+      { uri: 'https://picsum.photos/seed/srs2/600/900', caption: 'Each successful recall strengthens the memory trace. Apps like Anki automate this algorithm.' },
+    ],
     130,
     true,
     {
@@ -602,7 +615,7 @@ This is why EduTok uses quizzes after every lesson — it's neuroscience, not ju
     }
   ),
 
-  makeVideoLesson('l17', 'course5', 3, 'Growth Mindset vs Fixed Mindset', '_X0mgOOSpLU', 150,
+  makeVideoLesson('l17', 'course5', 3, 'Growth Mindset vs Fixed Mindset', DEMO_VIDEO, 150,
     false,
     null
   ),
@@ -689,14 +702,17 @@ This analysis reveals why Netflix invests heavily in original content — to red
   ),
 
   makeImageLesson('l20', 'course6', 2, 'SWOT Analysis',
-    'swotmatrix',
-    'SWOT Analysis maps your Strengths, Weaknesses, Opportunities, and Threats. Strengths and Weaknesses are internal (within your control). Opportunities and Threats are external (market forces). The power of SWOT lies in cross-analysis: How can strengths exploit opportunities? How can you use strengths to neutralize threats?',
+    [
+      { uri: 'https://picsum.photos/seed/swot1/600/900', caption: 'Strengths & Weaknesses are internal factors within your control to improve or leverage.' },
+      { uri: 'https://picsum.photos/seed/swot2/600/900', caption: 'Opportunities & Threats are external market forces you must monitor and adapt to.' },
+      { uri: 'https://picsum.photos/seed/swot3/600/900', caption: 'Cross-analysis: use Strengths to seize Opportunities and to neutralize Threats.' },
+    ],
     120,
     false,
     null
   ),
 
-  makeVideoLesson('l21', 'course6', 3, 'Blue Ocean Strategy', 'iZdMF5uGVXM', 145,
+  makeVideoLesson('l21', 'course6', 3, 'Blue Ocean Strategy', DEMO_VIDEO, 145,
     true,
     {
       id: 'q12',
@@ -756,14 +772,16 @@ This analysis reveals why Netflix invests heavily in original content — to red
   ),
 
   makeImageLesson('l23', 'course7', 2, 'Compound Interest: The 8th Wonder',
-    'compoundgrowth',
-    'Compound interest means you earn interest on your interest. $1,000 at 10% annual return becomes $2,594 after 10 years without adding a cent. After 30 years: $17,449. The magic is time — the longer you wait to start investing, the more you miss. Starting at 25 vs 35 can mean hundreds of thousands in retirement savings.',
+    [
+      { uri: 'https://picsum.photos/seed/compound1/600/900', caption: '$1,000 at 10% annual return becomes $2,594 in 10 years — without adding a cent.' },
+      { uri: 'https://picsum.photos/seed/compound2/600/900', caption: 'After 30 years: $17,449. Starting investing at 25 vs 35 can mean hundreds of thousands difference.' },
+    ],
     140,
     false,
     null
   ),
 
-  makeVideoLesson('l24', 'course7', 3, 'Index Funds: Investing for Beginners', 'UKsaLdqvE6c', 165,
+  makeVideoLesson('l24', 'course7', 3, 'Index Funds: Investing for Beginners', DEMO_VIDEO, 165,
     true,
     {
       id: 'q14',
@@ -862,14 +880,17 @@ SEO results take 3-6 months but compound over time, unlike paid ads.`,
   ),
 
   makeImageLesson('l27', 'course8', 2, 'Social Media Ad Funnel',
-    'adfunnel',
-    'The marketing funnel moves potential customers from Awareness → Interest → Consideration → Conversion. Each stage needs different content: Awareness uses broad reach posts and video ads; Interest uses educational content; Consideration uses testimonials and case studies; Conversion uses direct offers, limited-time deals, and retargeting ads. Most brands focus only on conversion and wonder why ads don\'t work.',
+    [
+      { uri: 'https://picsum.photos/seed/funnel1/600/900', caption: 'Awareness stage: use broad video ads and boosted posts to reach new audiences.' },
+      { uri: 'https://picsum.photos/seed/funnel2/600/900', caption: 'Interest & Consideration: educate with content, testimonials, and comparison guides.' },
+      { uri: 'https://picsum.photos/seed/funnel3/600/900', caption: 'Conversion: retarget warm audiences with limited-time offers and direct calls to action.' },
+    ],
     145,
     false,
     null
   ),
 
-  makeVideoLesson('l28', 'course8', 3, 'Email Marketing That Converts', 'GxPcZL2XtOM', 150,
+  makeVideoLesson('l28', 'course8', 3, 'Email Marketing That Converts', DEMO_VIDEO, 150,
     true,
     {
       id: 'q16',

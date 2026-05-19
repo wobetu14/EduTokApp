@@ -6,33 +6,33 @@ import {
   StyleSheet,
   FlatList,
   Animated,
-  Dimensions,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
-
-const { width: W } = Dimensions.get('window');
+import { useResponsive } from '../utils/responsive';
 
 const STEPS = ['welcome', 'interests', 'permissions'];
 
-const WelcomeStep = ({ onNext }) => (
-  <View style={styles.stepContainer}>
+const WelcomeStep = ({ onNext }) => {
+  const { hPad, isLandscape } = useResponsive();
+  return (
+  <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
     <LinearGradient
       colors={[COLORS.primary + '44', 'transparent']}
       style={styles.bgGrad}
     />
-    <View style={styles.welcomeIcon}>
-      <Ionicons name="school" size={80} color={COLORS.primary} />
+    <View style={[styles.welcomeIcon, isLandscape && { marginTop: 8, marginBottom: 8 }]}>
+      <Ionicons name="school" size={isLandscape ? 52 : 80} color={COLORS.primary} />
     </View>
-    <Text style={styles.welcomeTitle}>Welcome to{'\n'}EduTok 🎓</Text>
-    <Text style={styles.welcomeSub}>
+    <Text style={[styles.welcomeTitle, isLandscape && { fontSize: 24, lineHeight: 32, marginBottom: 6 }]}>Welcome to{'\n'}EduTok 🎓</Text>
+    <Text style={[styles.welcomeSub, isLandscape && { marginBottom: 16 }]}>
       Bite-sized lessons on the topics you love.{'\n'}
       Learn anything in just 3 minutes a day.
     </Text>
-    <View style={styles.featureList}>
+    <View style={[styles.featureList, isLandscape && { gap: 8, marginBottom: 20 }]}>
       {[
         { icon: 'play-circle', text: 'TikTok-style lesson feed' },
         { icon: 'checkmark-circle', text: 'Progress quizzes & streaks' },
@@ -50,12 +50,14 @@ const WelcomeStep = ({ onNext }) => (
       <Ionicons name="arrow-forward" size={20} color="#fff" />
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 const InterestsStep = ({ selected, onToggle, onNext }) => {
+  const { hPad, catChipW } = useResponsive();
   const canContinue = selected.length > 0;
   return (
-    <View style={styles.stepContainer}>
+    <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
       <Text style={styles.stepTitle}>What do you want to learn?</Text>
       <Text style={styles.stepSub}>
         Choose your interests — we'll personalize your feed.
@@ -67,7 +69,7 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
             return (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.catChip, active && { borderColor: cat.color, backgroundColor: cat.color + '22' }]}
+                style={[styles.catChip, { width: catChipW }, active && { borderColor: cat.color, backgroundColor: cat.color + '22' }]}
                 onPress={() => onToggle(cat.id)}
                 activeOpacity={0.8}
               >
@@ -97,13 +99,14 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
 };
 
 const PermissionsStep = ({ onFinish }) => {
+  const { hPad } = useResponsive();
   const perms = [
     { icon: 'notifications', label: 'Notifications', desc: 'Get lesson reminders' },
     { icon: 'camera', label: 'Camera', desc: 'Upload profile photo' },
     { icon: 'folder', label: 'Storage', desc: 'Save content offline' },
   ];
   return (
-    <View style={styles.stepContainer}>
+    <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
       <Text style={styles.stepTitle}>Quick permissions</Text>
       <Text style={styles.stepSub}>EduTok works best with these enabled.</Text>
       <View style={styles.permList}>
@@ -190,7 +193,6 @@ const styles = StyleSheet.create({
   dotDone: { backgroundColor: COLORS.success },
   stepContainer: {
     flex: 1,
-    paddingHorizontal: 24,
     paddingBottom: 40,
   },
   bgGrad: {
@@ -246,7 +248,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   catChip: {
-    width: (W - 60) / 2,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

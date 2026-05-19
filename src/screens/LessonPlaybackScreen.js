@@ -9,7 +9,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   ScrollView,
   TouchableOpacity,
   Modal,
@@ -30,8 +29,8 @@ import QuizModal from '../components/QuizModal';
 import CommentThread from '../components/CommentThread';
 import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../utils/responsive';
 
-const { width: W, height: H } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 60;
 
 // --- Content renderers ---
@@ -47,25 +46,48 @@ const TextContent = ({ lesson }) => (
   </ScrollView>
 );
 
-const ImageContent = ({ lesson }) => (
-  <View style={styles.imageContainer}>
-    <Image
-      source={{ uri: lesson.content.imageUri }}
-      style={styles.lessonImage}
-      resizeMode="cover"
-    />
-    {lesson.content.caption && (
-      <View style={styles.captionRow}>
-        <Text style={styles.captionText}>{lesson.content.caption}</Text>
-      </View>
-    )}
-  </View>
-);
+const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const images = lesson.content.images ?? [
+    { uri: lesson.content.imageUri, caption: lesson.content.caption },
+  ];
+  return (
+    <View style={styles.imageContainer}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
+        onMomentumScrollEnd={(e) => {
+          setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / slideWidth));
+        }}
+      >
+        {images.map((item, i) => (
+          <View key={i} style={{ width: slideWidth, height: slideHeight }}>
+            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            {item.caption ? (
+              <View style={styles.captionRow}>
+                <Text style={styles.captionText}>{item.caption}</Text>
+              </View>
+            ) : null}
+          </View>
+        ))}
+      </ScrollView>
+      {images.length > 1 && (
+        <View style={styles.imgDots} pointerEvents="none">
+          {images.map((_, i) => (
+            <View key={i} style={[styles.imgDot, i === activeIdx && styles.imgDotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
 
 const VideoContent = ({ lesson, active, onProgress }) => (
   <View style={styles.videoContainer}>
     <VideoPlayer
-      youtubeId={lesson.content.youtubeId}
+      videoUri={lesson.content.videoUri}
       active={active}
       onProgress={onProgress}
     />
@@ -78,12 +100,13 @@ const LessonSlide = ({
   onLike, onFavorite, onComment, onShare, onEnroll,
   commentCount, courseTitle, lessonIndex, totalLessons,
   videoProgress, onVideoProgress,
+  showShare, insetBottom, slideWidth, slideHeight, courseThumbnail,
 }) => {
   const renderContent = () => {
     switch (lesson.type) {
-      case 'video': return <VideoContent lesson={lesson} active={active} onProgress={onVideoProgress} />;
-      case 'image': return <ImageContent lesson={lesson} />;
-      default:      return <TextContent lesson={lesson} />;
+      case 'video': return <VideoContent key={lesson.id} lesson={lesson} active={active} onProgress={onVideoProgress} />;
+      case 'image': return <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideHeight} />;
+      default:      return <TextContent key={lesson.id} lesson={lesson} />;
     }
   };
 
@@ -106,7 +129,7 @@ const LessonSlide = ({
       )}
 
       {/* Bottom-left info */}
-      <View style={styles.bottomLeft}>
+      <View style={[styles.bottomLeft, { bottom: insetBottom + 24 }]}>
         <Text style={styles.courseTitle} numberOfLines={1}>{courseTitle}</Text>
         <Text style={styles.lessonInfo}>Lesson {lessonIndex + 1} of {totalLessons}</Text>
         {lesson.type !== 'video' && (
@@ -136,7 +159,7 @@ const LessonSlide = ({
       </View>
 
       {/* Right engagement stack */}
-      <View style={styles.rightButtons}>
+      <View style={[styles.rightButtons, { bottom: insetBottom + 24 }]}>
         <EngagementButtons
           isLiked={isLiked}
           isFavorited={isFavorited}
@@ -150,7 +173,9 @@ const LessonSlide = ({
           onShare={onShare}
           onEnroll={onEnroll}
           isEnrolled={isEnrolled}
-          showEnroll={!isEnrolled}
+          courseThumbnail={courseThumbnail}
+          showEnroll={true}
+          showShare={showShare}
         />
       </View>
     </View>
@@ -162,6 +187,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const { courseId, lessonId, startIndex = 0 } = route.params;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { W, H, commentsH } = useResponsive();
   const {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
     getLessonsForCourse, toggleLike, toggleFavorite,
@@ -171,12 +197,20 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
   const lessons = useMemo(() => getLessonsForCourse(courseId), [getLessonsForCourse, courseId]);
 
+  // TikTok-style: center on wide screens (desktop/tablet web)
+  const isWide = W >= 500;
+  const slideWidth = isWide ? Math.min(W, 430) : W;
+
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showQuiz, setShowQuiz] = useState(false);
   const [pendingNext, setPendingNext] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [slideH, setSlideH] = useState(H);
+
+  // Hide Share when screen is too short to fit it comfortably
+  const showShare = slideH >= 700;
 
   const lesson = lessons[currentIndex];
   const translateY = useRef(new Animated.Value(0)).current;
@@ -184,6 +218,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   // Refs so panResponder always calls the latest callbacks
   const tryGoNextRef = useRef(null);
   const goToPrevRef = useRef(null);
+  const currentLessonTypeRef = useRef(null);
 
   // Mark lesson complete and reset video progress when lesson changes
   useEffect(() => {
@@ -196,7 +231,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const animateToNext = useCallback(() => {
     setVideoActive(false);
     Animated.timing(translateY, {
-      toValue: -H,
+      toValue: -slideH,
       duration: 260,
       useNativeDriver: true,
     }).start(() => {
@@ -204,12 +239,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
       translateY.setValue(0);
       setVideoActive(true);
     });
-  }, [translateY]);
+  }, [translateY, slideH]);
 
   const animateToPrev = useCallback(() => {
     setVideoActive(false);
     Animated.timing(translateY, {
-      toValue: H,
+      toValue: slideH,
       duration: 260,
       useNativeDriver: true,
     }).start(() => {
@@ -217,7 +252,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
       translateY.setValue(0);
       setVideoActive(true);
     });
-  }, [translateY]);
+  }, [translateY, slideH]);
 
   const tryGoNext = useCallback(() => {
     if (lesson?.hasQuiz && !isQuizPassed(lesson.quiz?.id)) {
@@ -243,11 +278,18 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   // Update refs every render — panResponder reads these during gestures
   tryGoNextRef.current = tryGoNext;
   goToPrevRef.current = goToPrev;
+  currentLessonTypeRef.current = lesson?.type ?? null;
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_, g) => {
+        const type = currentLessonTypeRef.current;
+        if (type === 'text') return false;
+        if (type === 'image') {
+          return Math.abs(g.dy) > 14 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
+        }
+        return Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx);
+      },
       onPanResponderMove: (_, g) => {
         translateY.setValue(g.dy);
       },
@@ -285,46 +327,68 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   if (!lesson) return null;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Back button */}
-      <TouchableOpacity
-        style={[styles.backBtn, { top: insets.top + 10 }]}
-        onPress={() => navigation.goBack()}
+    <View style={styles.container}>
+      {/* Centered slide column — full-width on mobile, phone-width on desktop/tablet */}
+      <View
+        style={[styles.slideColumn, { width: slideWidth }]}
+        onLayout={(e) => setSlideH(e.nativeEvent.layout.height)}
       >
-        <Ionicons name="chevron-down" size={24} color="#fff" />
-      </TouchableOpacity>
+        {/* Back button — inside column so it's centered with the content on wide screens */}
+        <TouchableOpacity
+          style={[styles.backBtn, { top: insets.top + 10 }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-down" size={24} color="#fff" />
+        </TouchableOpacity>
 
-      <Animated.View
-        style={[styles.slideWrap, { transform: [{ translateY }] }]}
-        {...panResponder.panHandlers}
-      >
-        <LessonSlide
-          lesson={lesson}
-          active={videoActive}
-          isLiked={isLiked(lesson.id)}
-          isFavorited={isFavorited(lesson.id)}
-          isEnrolled={isEnrolled(courseId)}
-          onLike={() => toggleLike(lesson.id)}
-          onFavorite={() => toggleFavorite(lesson.id)}
-          onComment={() => setShowComments(true)}
-          onShare={handleShare}
-          onEnroll={() => enroll(courseId)}
-          commentCount={0}
-          courseTitle={course?.title || ''}
-          lessonIndex={currentIndex}
-          totalLessons={lessons.length}
-          videoProgress={videoProgress}
-          onVideoProgress={setVideoProgress}
-        />
-      </Animated.View>
+        <Animated.View
+          style={[styles.slideWrap, { width: slideWidth, height: slideH, transform: [{ translateY }] }]}
+          {...panResponder.panHandlers}
+        >
+          <LessonSlide
+            lesson={lesson}
+            active={videoActive}
+            isLiked={isLiked(lesson.id)}
+            isFavorited={isFavorited(lesson.id)}
+            isEnrolled={isEnrolled(courseId)}
+            onLike={() => toggleLike(lesson.id)}
+            onFavorite={() => toggleFavorite(lesson.id)}
+            onComment={() => setShowComments(true)}
+            onShare={handleShare}
+            onEnroll={() => enroll(courseId)}
+            commentCount={0}
+            courseTitle={course?.title || ''}
+            lessonIndex={currentIndex}
+            totalLessons={lessons.length}
+            videoProgress={videoProgress}
+            onVideoProgress={setVideoProgress}
+            showShare={showShare}
+            insetBottom={insets.bottom}
+            slideWidth={slideWidth}
+            slideHeight={slideH}
+            courseThumbnail={course?.thumbnail}
+          />
+        </Animated.View>
 
-      {/* Swipe hint */}
-      {currentIndex < lessons.length - 1 && (
-        <View style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}>
-          <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
-          <Text style={styles.swipeHintText}>Swipe up for next lesson</Text>
-        </View>
-      )}
+        {/* Swipe hint — positioned above home indicator, outside animated view */}
+        {currentIndex < lessons.length - 1 && (
+          lesson.type === 'text' ? (
+            <TouchableOpacity
+              style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}
+              onPress={tryGoNext}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.7)" />
+              <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>Tap for next lesson</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}>
+              <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
+              <Text style={styles.swipeHintText}>Swipe up for next lesson</Text>
+            </View>
+          )
+        )}
+      </View>
 
       <QuizModal
         visible={showQuiz}
@@ -344,7 +408,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             style={styles.commentsBackdrop}
             onPress={() => setShowComments(false)}
           />
-          <View style={styles.commentsSheet}>
+          <View style={[styles.commentsSheet, { height: commentsH }]}>
             <CommentThread
               lessonId={lesson.id}
               onClose={() => setShowComments(false)}
@@ -360,6 +424,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
+  },
+  slideColumn: {
+    flex: 1,
   },
   backBtn: {
     position: 'absolute',
@@ -372,13 +440,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slideWrap: {
-    width: W,
-    height: H,
-  },
+  slideWrap: {},
   slide: {
-    width: W,
-    height: H,
+    flex: 1,
     backgroundColor: '#000',
   },
   // Text lesson
@@ -408,9 +472,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  lessonImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
   captionRow: {
     position: 'absolute',
     bottom: 180,
@@ -424,6 +485,26 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     fontSize: SIZES.sm,
     lineHeight: 18,
+  },
+  imgDots: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  imgDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  imgDotActive: {
+    width: 16,
+    backgroundColor: '#fff',
   },
   // Video lesson
   videoContainer: {
@@ -453,7 +534,6 @@ const styles = StyleSheet.create({
   },
   bottomLeft: {
     position: 'absolute',
-    bottom: 80,
     left: 16,
     right: 90,
     gap: 5,
@@ -497,7 +577,6 @@ const styles = StyleSheet.create({
   rightButtons: {
     position: 'absolute',
     right: 14,
-    bottom: 80,
   },
   swipeHint: {
     position: 'absolute',
@@ -521,9 +600,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  commentsSheet: {
-    height: H * 0.65,
-  },
+  commentsSheet: {},
 });
 
 export default LessonPlaybackScreen;

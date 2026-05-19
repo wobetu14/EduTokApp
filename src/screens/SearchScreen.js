@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
+import { useResponsive } from '../utils/responsive';
 
 const SearchResultCard = ({ course, org, onPress }) => (
   <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
@@ -34,6 +35,7 @@ const SearchResultCard = ({ course, org, onPress }) => (
 
 const SearchScreen = ({ navigation }) => {
   const { courses, organizations, isLoading } = useCourses();
+  const { hPad } = useResponsive();
   const [query, setQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState(null);
 
@@ -59,7 +61,7 @@ const SearchScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Search bar */}
-      <View style={styles.searchBar}>
+      <View style={[styles.searchBar, { marginHorizontal: hPad }]}>
         <Ionicons name="search" size={18} color={COLORS.textMuted} />
         <TextInput
           style={styles.searchInput}
@@ -132,7 +134,7 @@ const SearchScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('CourseProfile', { courseId: item.id })}
             />
           )}
-          contentContainerStyle={styles.resultList}
+          contentContainerStyle={[styles.resultList, { paddingHorizontal: hPad }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -166,7 +168,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
     gap: 10,
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  resultList: { padding: 16, gap: 12, paddingBottom: 100 },
+  resultList: { paddingTop: 8, gap: 12, paddingBottom: 100 },
   resultCard: {
     flexDirection: 'row',
     backgroundColor: COLORS.card,

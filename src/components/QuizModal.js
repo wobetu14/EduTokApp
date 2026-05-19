@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Animated,
   Image,
 } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES } from '../utils/constants';
@@ -82,12 +83,16 @@ const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
 );
 
 const QuizModal = ({ visible, quiz, onPass, onClose }) => {
+  const { width: W } = useWindowDimensions();
+  const isWide = W >= 600;
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
   const [passed, setPassed] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+  const [finalPct, setFinalPct] = useState(0);
 
   const question = quiz?.questions?.[currentQ];
   const total = quiz?.questions?.length || 0;
@@ -99,7 +104,14 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
     setScore(0);
     setFinished(false);
     setPassed(false);
+    setFinalScore(0);
+    setFinalPct(0);
   }, []);
+
+  // Reset state each time the modal opens so stale results don't show
+  useEffect(() => {
+    if (visible) reset();
+  }, [visible]);
 
   const handleAnswer = useCallback(
     (val) => {
@@ -117,22 +129,29 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
       // score state is already updated by handleAnswer before Next is pressed
       const pct = Math.round((score / total) * 100);
       const didPass = pct >= 60;
+      setFinalScore(score);
+      setFinalPct(pct);
       setFinished(true);
       setPassed(didPass);
-      if (didPass) onPass?.(quiz.id, score, pct);
+      // onPass deferred — called when user presses "Continue"
     } else {
       setCurrentQ((q) => q + 1);
       setSelected(null);
       setAnswered(false);
     }
-  }, [currentQ, total, score, quiz, onPass]);
+  }, [currentQ, total, score]);
+
+  // Called by the "Continue" button on the pass results screen
+  const handleContinue = useCallback(() => {
+    onPass?.(quiz.id, finalScore, finalPct);
+  }, [quiz, finalScore, finalPct, onPass]);
 
   if (!quiz || !visible) return null;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, isWide && { maxWidth: 560, width: '100%', alignSelf: 'center', borderRadius: 24 }]}>
           {/* Header */}
           <LinearGradient colors={[COLORS.primary + '33', 'transparent']} style={styles.headerGrad} />
           <View style={styles.header}>
@@ -175,7 +194,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                   </TouchableOpacity>
                 )}
                 {passed && (
-                  <TouchableOpacity style={styles.nextBtn} onPress={onClose}>
+                  <TouchableOpacity style={styles.nextBtn} onPress={handleContinue}>
                     <Text style={styles.nextBtnText}>Continue</Text>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </TouchableOpacity>

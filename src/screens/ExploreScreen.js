@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
+import { useResponsive } from '../utils/responsive';
 
 const OrgCard = ({ org, courseCount, onPress }) => (
   <TouchableOpacity style={styles.orgCard} onPress={onPress} activeOpacity={0.85}>
@@ -27,6 +28,7 @@ const OrgCard = ({ org, courseCount, onPress }) => (
 
 const ExploreScreen = ({ navigation }) => {
   const { isLoading, courses, organizations } = useCourses();
+  const { hPad, hCardW, isTablet } = useResponsive();
   const [view, setView] = useState('courses');
 
   const getOrg = (orgId) => organizations.find((o) => o.id === orgId);
@@ -80,16 +82,20 @@ const ExploreScreen = ({ navigation }) => {
 
       {view === 'organizations' ? (
         <FlatList
+          key={isTablet ? 'org-2col' : 'org-1col'}
           data={organizations}
           keyExtractor={(o) => o.id}
+          numColumns={isTablet ? 2 : 1}
           renderItem={({ item }) => (
-            <OrgCard
-              org={item}
-              courseCount={getCourseCount(item.id)}
-              onPress={() => navigation.navigate('OrganizationProfile', { orgId: item.id })}
-            />
+            <View style={{ flex: 1, padding: 4 }}>
+              <OrgCard
+                org={item}
+                courseCount={getCourseCount(item.id)}
+                onPress={() => navigation.navigate('OrganizationProfile', { orgId: item.id })}
+              />
+            </View>
           )}
-          contentContainerStyle={styles.orgList}
+          contentContainerStyle={[styles.orgList, { paddingHorizontal: hPad }]}
           showsVerticalScrollIndicator={false}
         />
       ) : (
@@ -109,7 +115,7 @@ const ExploreScreen = ({ navigation }) => {
               keyExtractor={(c) => c.id}
               renderItem={({ item: course }) => (
                 <TouchableOpacity
-                  style={styles.hCard}
+                  style={[styles.hCard, { width: hCardW }]}
                   onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
                   activeOpacity={0.85}
                 >
@@ -176,6 +182,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 10,
+    flexWrap: 'wrap',
   },
   sectionTitle: {
     fontSize: SIZES.base,
@@ -183,7 +190,6 @@ const styles = StyleSheet.create({
   },
   hList: { paddingLeft: 16, paddingRight: 8, gap: 12 },
   hCard: {
-    width: 180,
     backgroundColor: COLORS.card,
     borderRadius: 12,
     overflow: 'hidden',
@@ -211,7 +217,7 @@ const styles = StyleSheet.create({
   hMetaText: { color: COLORS.textMuted, fontSize: 11 },
   listContent: { paddingBottom: 100 },
   // Org cards
-  orgList: { padding: 16, gap: 12, paddingBottom: 100 },
+  orgList: { padding: 8, paddingBottom: 100 },
   orgCard: {
     flexDirection: 'row',
     alignItems: 'center',

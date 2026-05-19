@@ -16,9 +16,11 @@ import LessonCard from '../components/LessonCard';
 import ProgressBar from '../components/ProgressBar';
 import { useCourses } from '../context/CourseContext';
 import { formatLargeNumber, formatMinutes } from '../utils/helpers';
+import { useResponsive } from '../utils/responsive';
 
 const CourseProfileScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
+  const { heroH, lessonCardW, hPad } = useResponsive();
   const {
     courses,
     organizations,
@@ -64,7 +66,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero */}
-      <View style={styles.hero}>
+      <View style={[styles.hero, { height: heroH }]}>
         <Image source={{ uri: course.thumbnail }} style={styles.heroImage} />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.9)']}
@@ -149,10 +151,10 @@ const CourseProfileScreen = ({ route, navigation }) => {
       )}
 
       {/* Lessons grid */}
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingHorizontal: hPad }]}>
         <Text style={styles.sectionTitle}>{lessons.length} Lessons</Text>
       </View>
-      <View style={styles.lessonGrid}>
+      <View style={[styles.lessonGrid, { paddingHorizontal: hPad }]}>
         {lessons.map((lesson, index) => (
           <LessonCard
             key={lesson.id}
@@ -160,6 +162,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
             index={index}
             isCompleted={isLessonCompleted(lesson.id)}
             onPress={() => handleLessonPress(lesson, index)}
+            style={{ width: lessonCardW }}
           />
         ))}
       </View>
@@ -173,7 +176,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background },
   hero: {
-    height: 280,
     position: 'relative',
     justifyContent: 'flex-end',
   },
@@ -316,8 +318,7 @@ const styles = StyleSheet.create({
   lessonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
     gap: 8,
   },
 });

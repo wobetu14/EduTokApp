@@ -72,7 +72,7 @@ const CommentThread = ({ lessonId, onClose }) => {
           {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
         </Text>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="close" size={24} color={COLORS.text} />
+          <Ionicons name="close" size={24} color="#444" />
         </TouchableOpacity>
       </View>
       {loading ? (
@@ -96,7 +96,7 @@ const CommentThread = ({ lessonId, onClose }) => {
         <TextInput
           style={styles.input}
           placeholder="Add a comment..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor="#aaa"
           value={text}
           onChangeText={setText}
           multiline
@@ -121,7 +121,7 @@ const CommentThread = ({ lessonId, onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -131,10 +131,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: '#e8e8e8',
   },
   headerTitle: {
-    color: COLORS.text,
+    color: '#111',
     fontSize: SIZES.base,
     fontWeight: '700',
   },
@@ -150,11 +150,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.card,
+    backgroundColor: '#ebebeb',
   },
   bubble: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     padding: 10,
   },
@@ -170,16 +170,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   time: {
-    color: COLORS.textMuted,
+    color: '#aaa',
     fontSize: SIZES.xs,
   },
   commentText: {
-    color: COLORS.text,
+    color: '#222',
     fontSize: SIZES.sm,
     lineHeight: 19,
   },
   empty: {
-    color: COLORS.textMuted,
+    color: '#aaa',
     textAlign: 'center',
     marginTop: 40,
     fontSize: SIZES.md,
@@ -190,21 +190,21 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: '#e8e8e8',
   },
   inputAvatar: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: COLORS.card,
+    backgroundColor: '#ebebeb',
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: '#f0f0f0',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    color: COLORS.text,
+    color: '#111',
     fontSize: SIZES.sm,
     maxHeight: 100,
   },

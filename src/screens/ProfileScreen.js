@@ -19,6 +19,7 @@ import ProgressBar from '../components/ProgressBar';
 import { useAuth } from '../context/AuthContext';
 import { useCourses } from '../context/CourseContext';
 import { formatTimeAgo } from '../utils/helpers';
+import { useResponsive } from '../utils/responsive';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
@@ -34,6 +35,7 @@ const SectionTitle = ({ children }) => (
 
 const ProfileScreen = ({ navigation }) => {
   const { user, signOut, updateUser } = useAuth();
+  const { hPad, formMaxW } = useResponsive();
   const {
     courses,
     progress,
@@ -92,7 +94,7 @@ const ProfileScreen = ({ navigation }) => {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <LinearGradient colors={['#0D0D1A', COLORS.background]} style={styles.headerBg}>
-        <View style={styles.profileHeader}>
+        <View style={[styles.profileHeader, { paddingHorizontal: hPad }]}>
           <Image
             source={{ uri: user?.avatar || `https://picsum.photos/seed/profile/200/200` }}
             style={styles.avatar}
@@ -111,7 +113,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         {/* Stats row */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, { paddingHorizontal: hPad }]}>
           <StatCard icon="trophy" value={completedCourses.length} label="Completed" color={COLORS.success} />
           <StatCard icon="time" value={`${totalHours}h`} label="Learned" color={COLORS.secondary} />
           <StatCard icon="flame" value={progress.streak || 0} label="Day Streak" color={COLORS.primary} />
@@ -121,7 +123,7 @@ const ProfileScreen = ({ navigation }) => {
 
       {/* Verification banner */}
       {!user?.phoneVerified && (
-        <TouchableOpacity style={styles.verifyBanner}>
+        <TouchableOpacity style={[styles.verifyBanner, { marginHorizontal: hPad }]}>
           <Ionicons name="warning" size={16} color={COLORS.warning} />
           <Text style={styles.verifyText}>Phone number not verified. Tap to verify.</Text>
           <Ionicons name="chevron-forward" size={14} color={COLORS.warning} />
@@ -129,7 +131,7 @@ const ProfileScreen = ({ navigation }) => {
       )}
 
       {/* Tab row */}
-      <View style={styles.tabRow}>
+      <View style={[styles.tabRow, { paddingHorizontal: hPad }]}>
         {['progress', 'saved', 'history'].map((tab) => (
           <TouchableOpacity
             key={tab}
@@ -229,7 +231,7 @@ const ProfileScreen = ({ navigation }) => {
 
       {/* Settings */}
       <SectionTitle>Settings</SectionTitle>
-      <View style={styles.settingsSection}>
+      <View style={[styles.settingsSection, { marginHorizontal: hPad }]}>
         <View style={styles.settingRow}>
           <Ionicons name="notifications-outline" size={20} color={COLORS.textSecondary} />
           <Text style={styles.settingLabel}>Notifications</Text>
@@ -257,7 +259,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+      <TouchableOpacity style={[styles.signOutBtn, { marginHorizontal: hPad }]} onPress={handleSignOut}>
         <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
@@ -267,7 +269,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Edit Profile Modal */}
       <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.editModal}>
+          <View style={[styles.editModal, { maxWidth: formMaxW, width: '100%', alignSelf: 'center' }]}>
             <View style={styles.editModalHeader}>
               <Text style={styles.editModalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
@@ -308,7 +310,6 @@ const styles = StyleSheet.create({
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingHorizontal: 16,
     gap: 14,
     marginBottom: 20,
   },
@@ -334,12 +335,13 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
     gap: 10,
     marginBottom: 16,
   },
   statCard: {
     flex: 1,
+    minWidth: 70,
     backgroundColor: COLORS.card,
     borderRadius: 12,
     alignItems: 'center',
@@ -353,7 +355,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORS.warning + '22',
-    marginHorizontal: 16,
     marginTop: 8,
     padding: 12,
     borderRadius: 10,
@@ -363,7 +364,6 @@ const styles = StyleSheet.create({
   verifyText: { flex: 1, color: COLORS.warning, fontSize: SIZES.sm, fontWeight: '600' },
   tabRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
     paddingTop: 12,
     gap: 4,
     borderBottomWidth: 1,
@@ -416,7 +416,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   settingsSection: {
-    marginHorizontal: 16,
     backgroundColor: COLORS.card,
     borderRadius: 14,
     overflow: 'hidden',
@@ -439,7 +438,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginHorizontal: 16,
     marginTop: 20,
     paddingVertical: 14,
     borderRadius: 14,

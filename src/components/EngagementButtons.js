@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Share, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constants';
 import { formatLargeNumber } from '../utils/helpers';
@@ -45,15 +45,23 @@ const EngagementButtons = ({
   onShare,
   onEnroll,
   isEnrolled,
+  courseThumbnail,
   showEnroll = false,
+  showShare = true,
   style,
 }) => {
   return (
     <View style={[styles.container, style]}>
-      {showEnroll && !isEnrolled && (
-        <TouchableOpacity style={styles.enrollBtn} onPress={onEnroll} activeOpacity={0.85}>
-          <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
+      {showEnroll && (
+        isEnrolled ? (
+          <View style={styles.enrolledThumb}>
+            <Image source={{ uri: courseThumbnail }} style={styles.enrolledThumbImg} resizeMode="cover" />
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.enrollBtn} onPress={onEnroll} activeOpacity={0.85}>
+            <Ionicons name="add" size={28} color="#fff" />
+          </TouchableOpacity>
+        )
       )}
       <ActionBtn
         icon="heart-outline"
@@ -79,14 +87,16 @@ const EngagementButtons = ({
         color={COLORS.secondary}
         onPress={onComment}
       />
-      <ActionBtn
-        icon="share-social-outline"
-        activeIcon="share-social"
-        isActive={false}
-        count={sharesCount}
-        color={COLORS.secondary}
-        onPress={onShare}
-      />
+      {showShare && (
+        <ActionBtn
+          icon="share-social-outline"
+          activeIcon="share-social"
+          isActive={false}
+          count={sharesCount}
+          color={COLORS.secondary}
+          onPress={onShare}
+        />
+      )}
     </View>
   );
 };
@@ -131,6 +141,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 8,
+  },
+  enrolledThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.success,
+  },
+  enrolledThumbImg: {
+    width: '100%',
+    height: '100%',
   },
 });
 

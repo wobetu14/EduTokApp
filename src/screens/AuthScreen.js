@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../utils/constants';
 import { isValidUsername, isValidPhone, passwordStrength } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../utils/responsive';
 
 const InputField = ({ icon, placeholder, value, onChangeText, secureEntry, keyboardType, error, rightElement }) => {
   const [secure, setSecure] = useState(secureEntry);
@@ -66,6 +67,7 @@ const StrengthBar = ({ password }) => {
 
 const AuthScreen = () => {
   const { signIn, signUp } = useAuth();
+  const { formPad, formMaxW, isLandscape } = useResponsive();
   const [mode, setMode] = useState('signin');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', fullName: '', phone: '', password: '' });
@@ -126,10 +128,14 @@ const AuthScreen = () => {
         style={styles.flex}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingHorizontal: formPad, paddingTop: isLandscape ? 32 : 80 },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={{ maxWidth: formMaxW, width: '100%', alignSelf: 'center' }}>
           {/* Logo */}
           <View style={styles.logoWrap}>
             <View style={styles.logoIcon}>
@@ -228,6 +234,7 @@ const AuthScreen = () => {
               <Text style={styles.switchLink}>{isSignUp ? 'Sign In' : 'Sign Up'}</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -239,8 +246,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 80,
     paddingBottom: 40,
   },
   logoWrap: {

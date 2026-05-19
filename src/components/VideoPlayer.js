@@ -1,88 +1,101 @@
-import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, StyleSheet, TouchableWithoutFeedback, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 
-const buildHtml = (youtubeId, autoplay) => `<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>
-*{margin:0;padding:0;background:#000;box-sizing:border-box;}
-html,body{width:100%;height:100vh;overflow:hidden;}
-#player,#player iframe{width:100%!important;height:100%!important;border:none!important;}
-</style>
-</head>
-<body>
-<div id="player"></div>
-<script>
-var tag=document.createElement('script');
-tag.src='https://www.youtube.com/iframe_api';
-document.head.appendChild(tag);
-var player;
-function onYouTubeIframeAPIReady(){
-  player=new YT.Player('player',{
-    videoId:'${youtubeId}',
-    playerVars:{autoplay:${autoplay ? 1 : 0},playsinline:1,rel:0,modestbranding:1},
-    events:{
-      onReady:function(e){
-        if(${autoplay ? 'true' : 'false'})e.target.playVideo();
-        setInterval(function(){
-          try{
-            var t=player.getCurrentTime(),d=player.getDuration();
-            if(d>0)window.ReactNativeWebView.postMessage(JSON.stringify({t:t,d:d}));
-          }catch(err){}
-        },500);
-      }
-    }
-  });
-}
-</script>
-</body>
-</html>`;
+const VideoPlayer = ({ videoUri, active, onProgress }) => {
+  const videoRef = useRef(null);
+  // Track user-initiated pause separately from slide-transition pausing
+  const [userPaused, setUserPaused] = useState(false);
+  const [flashedIcon, setFlashedIcon] = useState('pause');
+  const iconOpacity = useRef(new Animated.Value(0)).current;
 
-const VideoPlayer = ({ youtubeId, active, onProgress }) => {
-  const webViewRef = useRef(null);
+  const isPlaying = active && !userPaused;
 
   useEffect(() => {
-    if (!webViewRef.current) return;
-    const js = active
-      ? `try{if(player&&player.playVideo)player.playVideo();}catch(e){} true;`
-      : `try{if(player&&player.pauseVideo)player.pauseVideo();}catch(e){} true;`;
-    webViewRef.current.injectJavaScript(js);
-  }, [active]);
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.playAsync().catch(() => {});
+    } else {
+      videoRef.current.pauseAsync().catch(() => {});
+    }
+  }, [isPlaying]);
 
-  const handleMessage = (event) => {
-    try {
-      const { t, d } = JSON.parse(event.nativeEvent.data);
-      if (d > 0) onProgress?.(t / d);
-    } catch (_) {}
+  const flash = (name) => {
+    setFlashedIcon(name);
+    iconOpacity.setValue(1);
+    Animated.timing(iconOpacity, {
+      toValue: 0,
+      duration: 700,
+      delay: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleTap = () => {
+    if (!active) return;
+    if (!userPaused) {
+      setUserPaused(true);
+      flash('pause');
+    } else {
+      setUserPaused(false);
+      flash('play');
+    }
+  };
+
+  const handleStatus = (status) => {
+    if (status.isLoaded && status.durationMillis > 0) {
+      onProgress?.(status.positionMillis / status.durationMillis);
+    }
   };
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <WebView
-        ref={webViewRef}
-        source={{ html: buildHtml(youtubeId, active) }}
-        style={styles.webview}
-        onMessage={handleMessage}
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsFullscreenVideo={false}
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
-        originWhitelist={['*']}
-      />
-    </View>
+    <TouchableWithoutFeedback onPress={handleTap}>
+      <View style={styles.container}>
+        <Video
+          ref={videoRef}
+          source={{ uri: videoUri }}
+          style={styles.video}
+          resizeMode={ResizeMode.CONTAIN}
+          isLooping
+          shouldPlay={isPlaying}
+          onPlaybackStatusUpdate={handleStatus}
+          useNativeControls={false}
+        />
+        {/* Brief play/pause icon flash on tap */}
+        <Animated.View style={[styles.iconOverlay, { opacity: iconOpacity }]} pointerEvents="none">
+          <View style={styles.iconCircle}>
+            <Ionicons name={flashedIcon} size={44} color="#fff" />
+          </View>
+        </Animated.View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  webview: {
+  container: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+  },
+  iconOverlay: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
