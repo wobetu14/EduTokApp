@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCourses } from '../context/CourseContext';
 import { formatTimeAgo } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
@@ -36,12 +37,35 @@ const SectionTitle = ({ children }) => (
 const ProfileScreen = ({ navigation }) => {
   const { user, signOut, updateUser } = useAuth();
   const { hPad, formMaxW } = useResponsive();
+  const { t } = useTranslation();
   const {
     courses,
+    organizations,
     progress,
     getCourseProgress,
     getLessonsForCourse,
   } = useCourses();
+
+  const handleViewCertificate = (course) => {
+    const org = organizations.find((o) => o.id === course.organizationId);
+    const issuedAt = course.lessonIds
+      .map((lid) => progress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)
+      .filter(Boolean)
+      .sort()
+      .pop() || new Date().toISOString();
+    navigation.navigate('Certificate', {
+      certificate: {
+        id: `cert-${course.id}-${user?.id || 'user'}`,
+        studentName: user?.fullName || user?.username || 'Learner',
+        courseName: course.title,
+        organizationName: org?.name || 'EduTok',
+        authorName: org?.name || 'EduTok',
+        category: course.category,
+        difficulty: course.difficulty,
+        issuedAt,
+      },
+    });
+  };
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ fullName: user?.fullName || '', bio: user?.bio || '' });
@@ -79,9 +103,9 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+    Alert.alert(t('signOut'), t('signOutConfirmMsg'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('signOut'), style: 'destructive', onPress: signOut },
     ]);
   };
 
@@ -114,10 +138,10 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* Stats row */}
         <View style={[styles.statsRow, { paddingHorizontal: hPad }]}>
-          <StatCard icon="trophy" value={completedCourses.length} label="Completed" color={COLORS.success} />
-          <StatCard icon="time" value={`${totalHours}h`} label="Learned" color={COLORS.secondary} />
-          <StatCard icon="flame" value={progress.streak || 0} label="Day Streak" color={COLORS.primary} />
-          <StatCard icon="bookmark" value={favoritedLessons.length} label="Saved" color="#FF9800" />
+          <StatCard icon="trophy" value={completedCourses.length} label={t('completedStatus')} color={COLORS.success} />
+          <StatCard icon="time" value={`${totalHours}h`} label={t('learnedLabel')} color={COLORS.secondary} />
+          <StatCard icon="flame" value={progress.streak || 0} label={t('currentStreak')} color={COLORS.primary} />
+          <StatCard icon="bookmark" value={favoritedLessons.length} label={t('savedLabel')} color="#FF9800" />
         </View>
       </LinearGradient>
 
@@ -125,22 +149,25 @@ const ProfileScreen = ({ navigation }) => {
       {!user?.phoneVerified && (
         <TouchableOpacity style={[styles.verifyBanner, { marginHorizontal: hPad }]}>
           <Ionicons name="warning" size={16} color={COLORS.warning} />
-          <Text style={styles.verifyText}>Phone number not verified. Tap to verify.</Text>
+          <Text style={styles.verifyText}>{t('phoneNotVerified')}</Text>
           <Ionicons name="chevron-forward" size={14} color={COLORS.warning} />
         </TouchableOpacity>
       )}
 
       {/* Tab row */}
       <View style={[styles.tabRow, { paddingHorizontal: hPad }]}>
-        {['progress', 'saved', 'history'].map((tab) => (
+        {[
+          { key: 'progress', label: t('progressTab') },
+          { key: 'certs',    label: `${t('certsTab')}${completedCourses.length > 0 ? ` (${completedCourses.length})` : ''}` },
+          { key: 'saved',    label: t('favoriteLessons') },
+          { key: 'history',  label: t('history') },
+        ].map(({ key, label }) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab)}
+            key={key}
+            style={[styles.tab, activeTab === key && styles.tabActive]}
+            onPress={() => setActiveTab(key)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'progress' ? 'Progress' : tab === 'saved' ? 'Saved' : 'History'}
-            </Text>
+            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -149,7 +176,7 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'progress' && (
         <View style={styles.section}>
           {enrolledCourses.length === 0 ? (
-            <Text style={styles.emptyText}>No enrolled courses yet. Explore to get started!</Text>
+            <Text style={styles.emptyText}>{t('noEnrolledCourses')}</Text>
           ) : (
             enrolledCourses.map((course) => {
               const p = getCourseProgress(course.id);
@@ -165,14 +192,23 @@ const ProfileScreen = ({ navigation }) => {
                     <Text style={styles.courseTitle} numberOfLines={2}>{course.title}</Text>
                     <View style={styles.courseStatus}>
                       {p === 100 ? (
-                        <View style={styles.completedBadge}>
-                          <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                          <Text style={styles.completedText}>Completed</Text>
+                        <View style={styles.completedRow}>
+                          <View style={styles.completedBadge}>
+                            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                            <Text style={styles.completedText}>{t('completedStatus')}</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.certIconBtn}
+                            onPress={() => handleViewCertificate(course)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="ribbon" size={18} color={COLORS.primary} />
+                          </TouchableOpacity>
                         </View>
                       ) : p > 0 ? (
-                        <Text style={styles.inProgressText}>{p}% done</Text>
+                        <Text style={styles.inProgressText}>{p}%</Text>
                       ) : (
-                        <Text style={styles.notStartedText}>Not started</Text>
+                        <Text style={styles.notStartedText}>{t('notStarted')}</Text>
                       )}
                     </View>
                     <ProgressBar percent={p} height={3} />
@@ -184,10 +220,61 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       )}
 
+      {activeTab === 'certs' && (
+        <View style={styles.section}>
+          {completedCourses.length === 0 ? (
+            <Text style={styles.emptyText}>{t('noCertsYet')}</Text>
+          ) : (
+            completedCourses.map((course) => {
+              const org = organizations.find((o) => o.id === course.organizationId);
+              const catInfo = CATEGORIES.find((c) => c.id === course.category);
+              const issuedAt = course.lessonIds
+                .map((lid) => progress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)
+                .filter(Boolean).sort().pop() || new Date().toISOString();
+              const dateStr = new Date(issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+              return (
+                <View key={course.id} style={styles.certCard}>
+                  {/* Gold top accent */}
+                  <View style={styles.certCardAccent} />
+                  <View style={styles.certCardBody}>
+                    {/* Category chip */}
+                    {catInfo && (
+                      <View style={[styles.certChip, { backgroundColor: catInfo.color + '22', borderColor: catInfo.color + '66' }]}>
+                        <Ionicons name={catInfo.icon} size={11} color={catInfo.color} />
+                        <Text style={[styles.certChipText, { color: catInfo.color }]}>{catInfo.label}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.certCardTitle} numberOfLines={2}>{course.title}</Text>
+                    <Text style={styles.certCardOrg}>{org?.name || 'EduTok'}</Text>
+                    <View style={styles.certCardMeta}>
+                      <Ionicons name="calendar-outline" size={12} color={COLORS.textMuted} />
+                      <Text style={styles.certCardDate}>{t('issuedLabel')} {dateStr}</Text>
+                      {course.difficulty ? (
+                        <View style={styles.certDiffBadge}>
+                          <Text style={styles.certDiffText}>{course.difficulty}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.certCardBtn}
+                    onPress={() => handleViewCertificate(course)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="ribbon" size={16} color="#fff" />
+                    <Text style={styles.certCardBtnText}>{t('viewAndPrint')}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
+
       {activeTab === 'saved' && (
         <View style={styles.section}>
           {favoritedLessons.length === 0 ? (
-            <Text style={styles.emptyText}>No saved lessons. Bookmark lessons to find them here.</Text>
+            <Text style={styles.emptyText}>{t('noSavedLessons')}</Text>
           ) : (
             favoritedLessons.map((lesson) => (
               <View key={lesson.id} style={styles.savedRow}>
@@ -208,7 +295,7 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'history' && (
         <View style={styles.section}>
           {progress.completedLessons.length === 0 ? (
-            <Text style={styles.emptyText}>No completed lessons yet. Start learning!</Text>
+            <Text style={styles.emptyText}>{t('noCompletedLessons')}</Text>
           ) : (
             [...progress.completedLessons].reverse().slice(0, 20).map((cl, i) => {
               const lesson = courses.flatMap((c) => getLessonsForCourse(c.id)).find((l) => l.id === cl.lessonId);
@@ -230,11 +317,11 @@ const ProfileScreen = ({ navigation }) => {
       )}
 
       {/* Settings */}
-      <SectionTitle>Settings</SectionTitle>
+      <SectionTitle>{t('settings')}</SectionTitle>
       <View style={[styles.settingsSection, { marginHorizontal: hPad }]}>
         <View style={styles.settingRow}>
           <Ionicons name="notifications-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>Notifications</Text>
+          <Text style={styles.settingLabel}>{t('notifications')}</Text>
           <Switch
             value={user?.notificationsEnabled ?? true}
             onValueChange={(val) => updateUser({ notificationsEnabled: val })}
@@ -244,7 +331,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <View style={styles.settingRow}>
           <Ionicons name="language-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>Language</Text>
+          <Text style={styles.settingLabel}>{t('language')}</Text>
           <TouchableOpacity style={styles.langToggle} onPress={handleLanguageToggle}>
             <Text style={styles.langToggleText}>{user?.language === 'am' ? 'አማርኛ' : 'English'}</Text>
             <Ionicons name="swap-horizontal" size={14} color={COLORS.secondary} />
@@ -252,16 +339,16 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <View style={styles.settingRow}>
           <Ionicons name={user?.phoneVerified ? 'shield-checkmark' : 'shield-outline'} size={20} color={user?.phoneVerified ? COLORS.success : COLORS.warning} />
-          <Text style={styles.settingLabel}>Phone Verification</Text>
+          <Text style={styles.settingLabel}>{t('phoneVerification')}</Text>
           <Text style={[styles.verifyStatus, { color: user?.phoneVerified ? COLORS.success : COLORS.warning }]}>
-            {user?.phoneVerified ? 'Verified' : 'Not verified'}
+            {user?.phoneVerified ? t('verified') : t('notVerified')}
           </Text>
         </View>
       </View>
 
       <TouchableOpacity style={[styles.signOutBtn, { marginHorizontal: hPad }]} onPress={handleSignOut}>
         <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-        <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={styles.signOutText}>{t('signOut')}</Text>
       </TouchableOpacity>
 
       <View style={{ height: 100 }} />
@@ -271,31 +358,31 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.editModal, { maxWidth: formMaxW, width: '100%', alignSelf: 'center' }]}>
             <View style={styles.editModalHeader}>
-              <Text style={styles.editModalTitle}>Edit Profile</Text>
+              <Text style={styles.editModalTitle}>{t('editProfile')}</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.editLabel}>Full Name</Text>
+            <Text style={styles.editLabel}>{t('fullName')}</Text>
             <TextInput
               style={styles.editInput}
               value={editForm.fullName}
               onChangeText={(v) => setEditForm((f) => ({ ...f, fullName: v }))}
-              placeholder="Your full name"
+              placeholder={t('yourFullNamePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
-            <Text style={styles.editLabel}>Bio</Text>
+            <Text style={styles.editLabel}>{t('bioLabel')}</Text>
             <TextInput
               style={[styles.editInput, styles.editTextarea]}
               value={editForm.bio}
               onChangeText={(v) => setEditForm((f) => ({ ...f, bio: v }))}
-              placeholder="Tell us about yourself..."
+              placeholder={t('aboutYourselfPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               maxLength={160}
             />
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
-              <Text style={styles.saveBtnText}>Save Changes</Text>
+              <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -392,8 +479,50 @@ const styles = StyleSheet.create({
   courseInfo: { flex: 1, padding: 10, justifyContent: 'center', gap: 6 },
   courseTitle: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '700', lineHeight: 18 },
   courseStatus: { flexDirection: 'row', alignItems: 'center' },
+  completedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   completedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   completedText: { color: COLORS.success, fontSize: SIZES.xs, fontWeight: '700' },
+  certIconBtn: { padding: 2 },
+  // Certs tab
+  certCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#D4AF3744',
+  },
+  certCardAccent: { height: 3, backgroundColor: '#D4AF37' },
+  certCardBody: { padding: 14, gap: 6 },
+  certChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 2,
+  },
+  certChipText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  certCardTitle: { color: COLORS.text, fontSize: SIZES.base, fontWeight: '700', lineHeight: 20 },
+  certCardOrg: { color: COLORS.textSecondary, fontSize: SIZES.sm },
+  certCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  certCardDate: { color: COLORS.textMuted, fontSize: SIZES.xs, flex: 1 },
+  certDiffBadge: { backgroundColor: COLORS.surface, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
+  certDiffText: { color: COLORS.textSecondary, fontSize: 10, fontWeight: '600' },
+  certCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 11,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    borderRadius: 10,
+  },
+  certCardBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.sm },
   inProgressText: { color: COLORS.secondary, fontSize: SIZES.xs, fontWeight: '600' },
   notStartedText: { color: COLORS.textMuted, fontSize: SIZES.xs },
   savedRow: { flexDirection: 'row', gap: 12, backgroundColor: COLORS.card, borderRadius: 12, overflow: 'hidden' },

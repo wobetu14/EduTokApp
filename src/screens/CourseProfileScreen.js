@@ -15,15 +15,19 @@ import { COLORS, SIZES, CATEGORIES, DIFFICULTY } from '../utils/constants';
 import LessonCard from '../components/LessonCard';
 import ProgressBar from '../components/ProgressBar';
 import { useCourses } from '../context/CourseContext';
+import { useAuth } from '../context/AuthContext';
 import { formatLargeNumber, formatMinutes } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const CourseProfileScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
   const { heroH, lessonCardW, hPad } = useResponsive();
+  const { user } = useAuth();
   const {
     courses,
     organizations,
+    progress: userProgress,
     isLoading,
     isEnrolled,
     isLessonCompleted,
@@ -32,6 +36,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
     enroll,
   } = useCourses();
 
+  const { t } = useTranslation();
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
   const org = useMemo(
     () => organizations.find((o) => o.id === course?.organizationId),
@@ -60,6 +65,27 @@ const CourseProfileScreen = ({ route, navigation }) => {
       courseId,
       lessonId: lesson.id,
       startIndex: index,
+    });
+  };
+
+  const handleViewCertificate = () => {
+    const issuedAt = course.lessonIds
+      .map((lid) => userProgress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)
+      .filter(Boolean)
+      .sort()
+      .pop() || new Date().toISOString();
+
+    navigation.navigate('Certificate', {
+      certificate: {
+        id: `cert-${courseId}-${user?.id || 'user'}`,
+        studentName: user?.fullName || user?.username || 'Learner',
+        courseName: course.title,
+        organizationName: org?.name || 'EduTok',
+        authorName: org?.name || 'EduTok',
+        category: course.category,
+        difficulty: course.difficulty,
+        issuedAt,
+      },
     });
   };
 
@@ -115,27 +141,33 @@ const CourseProfileScreen = ({ route, navigation }) => {
       {enrolled ? (
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Your progress</Text>
+            <Text style={styles.progressLabel}>{t('yourProgress')}</Text>
             <Text style={styles.progressPct}>{progress}%</Text>
           </View>
           <ProgressBar percent={progress} height={6} />
           {progress === 100 && (
-            <View style={styles.completedBadge}>
-              <Ionicons name="trophy" size={16} color={COLORS.success} />
-              <Text style={styles.completedText}>Course completed!</Text>
+            <View style={styles.completedRow}>
+              <View style={styles.completedBadge}>
+                <Ionicons name="trophy" size={16} color={COLORS.success} />
+                <Text style={styles.completedText}>{t('courseCompleted')}</Text>
+              </View>
+              <TouchableOpacity style={styles.certBtn} onPress={handleViewCertificate} activeOpacity={0.85}>
+                <Ionicons name="ribbon" size={15} color="#fff" />
+                <Text style={styles.certBtnText}>{t('viewCertificate')}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
       ) : (
         <TouchableOpacity style={styles.enrollBtn} onPress={handleEnroll} activeOpacity={0.85}>
           <Ionicons name="add-circle" size={22} color="#fff" />
-          <Text style={styles.enrollBtnText}>Enroll in this Course</Text>
+          <Text style={styles.enrollBtnText}>{t('enrollInCourse')}</Text>
         </TouchableOpacity>
       )}
 
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.sectionTitle}>{t('about')}</Text>
         <Text style={styles.description}>{course.description}</Text>
       </View>
 
@@ -152,7 +184,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
 
       {/* Lessons grid */}
       <View style={[styles.section, { paddingHorizontal: hPad }]}>
-        <Text style={styles.sectionTitle}>{lessons.length} Lessons</Text>
+        <Text style={styles.sectionTitle}>{lessons.length} {t('lessons')}</Text>
       </View>
       <View style={[styles.lessonGrid, { paddingHorizontal: hPad }]}>
         {lessons.map((lesson, index) => (
@@ -261,13 +293,29 @@ const styles = StyleSheet.create({
   },
   progressLabel: { color: COLORS.text, fontWeight: '600', fontSize: SIZES.sm },
   progressPct: { color: COLORS.primary, fontWeight: '800', fontSize: SIZES.base },
+  completedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    gap: 12,
+  },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
   },
   completedText: { color: COLORS.success, fontWeight: '700', fontSize: SIZES.sm },
+  certBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  certBtnText: { color: '#fff', fontWeight: '700', fontSize: SIZES.xs },
   enrollBtn: {
     flexDirection: 'row',
     alignItems: 'center',

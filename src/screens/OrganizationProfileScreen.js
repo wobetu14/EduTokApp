@@ -14,12 +14,14 @@ import { COLORS, SIZES } from '../utils/constants';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const OrganizationProfileScreen = ({ route, navigation }) => {
   const { orgId } = route.params;
   const { organizations, courses } = useCourses();
   const { heroH, hPad } = useResponsive();
 
+  const { t } = useTranslation();
   const org = useMemo(() => organizations.find((o) => o.id === orgId), [organizations, orgId]);
   const orgCourses = useMemo(
     () => courses.filter((c) => c.organizationId === orgId),
@@ -60,9 +62,9 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
       {/* Stats */}
       <View style={[styles.statsRow, { marginHorizontal: hPad }]}>
         {[
-          { label: 'Courses', value: orgCourses.length, icon: 'book' },
-          { label: 'Lessons', value: totalLessons, icon: 'play-circle' },
-          { label: 'Students', value: totalEnrolled.toLocaleString(), icon: 'people' },
+          { label: t('courses'), value: orgCourses.length, icon: 'book' },
+          { label: t('lessons'), value: totalLessons, icon: 'play-circle' },
+          { label: t('students'), value: totalEnrolled.toLocaleString(), icon: 'people' },
         ].map((s) => (
           <View key={s.label} style={styles.stat}>
             <Ionicons name={s.icon} size={20} color={COLORS.secondary} />
@@ -74,13 +76,13 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
 
       {/* About */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.sectionTitle}>{t('about')}</Text>
         <Text style={styles.about}>{org.description}</Text>
       </View>
 
       {/* Courses */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{orgCourses.length} Courses</Text>
+        <Text style={styles.sectionTitle}>{orgCourses.length} {t('courses')}</Text>
       </View>
       {orgCourses.map((course) => (
         <CourseCard

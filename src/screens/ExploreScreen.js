@@ -14,21 +14,26 @@ import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
-const OrgCard = ({ org, courseCount, onPress }) => (
-  <TouchableOpacity style={styles.orgCard} onPress={onPress} activeOpacity={0.85}>
-    <Image source={{ uri: org.logo }} style={styles.orgLogo} />
-    <View style={styles.orgInfo}>
-      <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
-      <Text style={styles.orgCourses}>{courseCount} courses</Text>
-    </View>
-    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-  </TouchableOpacity>
-);
+const OrgCard = ({ org, courseCount, onPress }) => {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity style={styles.orgCard} onPress={onPress} activeOpacity={0.85}>
+      <Image source={{ uri: org.logo }} style={styles.orgLogo} />
+      <View style={styles.orgInfo}>
+        <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
+        <Text style={styles.orgCourses}>{courseCount} {t('courses').toLowerCase()}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+    </TouchableOpacity>
+  );
+};
 
 const ExploreScreen = ({ navigation }) => {
   const { isLoading, courses, organizations } = useCourses();
   const { hPad, hCardW, isTablet } = useResponsive();
+  const { t } = useTranslation();
   const [view, setView] = useState('courses');
 
   const getOrg = (orgId) => organizations.find((o) => o.id === orgId);
@@ -64,7 +69,7 @@ const ExploreScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Explore</Text>
+        <Text style={styles.headerTitle}>{t('explore')}</Text>
         <View style={styles.viewToggle}>
           {['courses', 'organizations'].map((v) => (
             <TouchableOpacity
@@ -73,7 +78,7 @@ const ExploreScreen = ({ navigation }) => {
               onPress={() => setView(v)}
             >
               <Text style={[styles.toggleText, view === v && styles.toggleTextActive]}>
-                {v === 'courses' ? 'Courses' : 'Orgs'}
+                {v === 'courses' ? t('courses') : t('orgs')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -127,7 +132,7 @@ const ExploreScreen = ({ navigation }) => {
                     </Text>
                     <View style={styles.hMeta}>
                       <Ionicons name="book-outline" size={11} color={COLORS.textMuted} />
-                      <Text style={styles.hMetaText}>{course.lessonIds.length} lessons</Text>
+                      <Text style={styles.hMetaText}>{course.lessonIds.length} {t('lessons').toLowerCase()}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>

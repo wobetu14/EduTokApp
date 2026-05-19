@@ -30,6 +30,7 @@ import CommentThread from '../components/CommentThread';
 import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -102,6 +103,7 @@ const LessonSlide = ({
   videoProgress, onVideoProgress,
   showShare, insetBottom, slideWidth, slideHeight, courseThumbnail,
 }) => {
+  const { t } = useTranslation();
   const renderContent = () => {
     switch (lesson.type) {
       case 'video': return <VideoContent key={lesson.id} lesson={lesson} active={active} onProgress={onVideoProgress} />;
@@ -131,17 +133,17 @@ const LessonSlide = ({
       {/* Bottom-left info */}
       <View style={[styles.bottomLeft, { bottom: insetBottom + 24 }]}>
         <Text style={styles.courseTitle} numberOfLines={1}>{courseTitle}</Text>
-        <Text style={styles.lessonInfo}>Lesson {lessonIndex + 1} of {totalLessons}</Text>
+        <Text style={styles.lessonInfo}>{t('lesson')} {lessonIndex + 1} {t('of')} {totalLessons}</Text>
         {lesson.type !== 'video' && (
           <View style={styles.metaRow}>
             <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.65)" />
-            <Text style={styles.metaText}>{formatDuration(lesson.duration)} read</Text>
+            <Text style={styles.metaText}>{formatDuration(lesson.duration)} {t('read')}</Text>
           </View>
         )}
         {lesson.hasQuiz && (
           <View style={styles.metaRow}>
             <Ionicons name="help-circle-outline" size={12} color={COLORS.secondary} />
-            <Text style={[styles.metaText, { color: COLORS.secondary }]}>Quiz before next lesson</Text>
+            <Text style={[styles.metaText, { color: COLORS.secondary }]}>{t('quizBeforeNext')}</Text>
           </View>
         )}
         <View style={styles.progressDots}>
@@ -187,6 +189,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const { courseId, lessonId, startIndex = 0 } = route.params;
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { W, H, commentsH } = useResponsive();
   const {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
@@ -379,12 +382,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
               activeOpacity={0.7}
             >
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.7)" />
-              <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>Tap for next lesson</Text>
+              <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextLesson')}</Text>
             </TouchableOpacity>
           ) : (
             <View style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}>
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.swipeHintText}>Swipe up for next lesson</Text>
+              <Text style={styles.swipeHintText}>{t('swipeHint')}</Text>
             </View>
           )
         )}

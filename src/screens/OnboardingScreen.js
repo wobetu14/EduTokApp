@@ -13,11 +13,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const STEPS = ['welcome', 'interests', 'permissions'];
 
 const WelcomeStep = ({ onNext }) => {
   const { hPad, isLandscape } = useResponsive();
+  const { t } = useTranslation();
+  const features = [
+    { icon: 'play-circle', key: 'tikTokFeed' },
+    { icon: 'checkmark-circle', key: 'progressQuizzesStreaks' },
+    { icon: 'bookmark', key: 'saveLessonsLater' },
+    { icon: 'chatbubbles', key: 'communityDiscussions' },
+  ];
   return (
   <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
     <LinearGradient
@@ -27,26 +35,20 @@ const WelcomeStep = ({ onNext }) => {
     <View style={[styles.welcomeIcon, isLandscape && { marginTop: 8, marginBottom: 8 }]}>
       <Ionicons name="school" size={isLandscape ? 52 : 80} color={COLORS.primary} />
     </View>
-    <Text style={[styles.welcomeTitle, isLandscape && { fontSize: 24, lineHeight: 32, marginBottom: 6 }]}>Welcome to{'\n'}EduTok 🎓</Text>
+    <Text style={[styles.welcomeTitle, isLandscape && { fontSize: 24, lineHeight: 32, marginBottom: 6 }]}>{t('welcome')} 🎓</Text>
     <Text style={[styles.welcomeSub, isLandscape && { marginBottom: 16 }]}>
-      Bite-sized lessons on the topics you love.{'\n'}
-      Learn anything in just 3 minutes a day.
+      {t('welcomeSubLong')}
     </Text>
     <View style={[styles.featureList, isLandscape && { gap: 8, marginBottom: 20 }]}>
-      {[
-        { icon: 'play-circle', text: 'TikTok-style lesson feed' },
-        { icon: 'checkmark-circle', text: 'Progress quizzes & streaks' },
-        { icon: 'bookmark', text: 'Save lessons for later' },
-        { icon: 'chatbubbles', text: 'Community discussions' },
-      ].map((f) => (
-        <View key={f.text} style={styles.featureRow}>
+      {features.map((f) => (
+        <View key={f.key} style={styles.featureRow}>
           <Ionicons name={f.icon} size={20} color={COLORS.secondary} />
-          <Text style={styles.featureText}>{f.text}</Text>
+          <Text style={styles.featureText}>{t(f.key)}</Text>
         </View>
       ))}
     </View>
     <TouchableOpacity style={styles.primaryBtn} onPress={onNext} activeOpacity={0.85}>
-      <Text style={styles.primaryBtnText}>Get Started</Text>
+      <Text style={styles.primaryBtnText}>{t('getStarted')}</Text>
       <Ionicons name="arrow-forward" size={20} color="#fff" />
     </TouchableOpacity>
   </View>
@@ -55,12 +57,13 @@ const WelcomeStep = ({ onNext }) => {
 
 const InterestsStep = ({ selected, onToggle, onNext }) => {
   const { hPad, catChipW } = useResponsive();
+  const { t } = useTranslation();
   const canContinue = selected.length > 0;
   return (
     <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
-      <Text style={styles.stepTitle}>What do you want to learn?</Text>
+      <Text style={styles.stepTitle}>{t('chooseInterests')}</Text>
       <Text style={styles.stepSub}>
-        Choose your interests — we'll personalize your feed.
+        {t('chooseInterestsFeed')}
       </Text>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.catScroll}>
         <View style={styles.catGrid}>
@@ -91,7 +94,7 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
         activeOpacity={0.85}
       >
         <Text style={styles.primaryBtnText}>
-          Continue {selected.length > 0 ? `(${selected.length} selected)` : ''}
+          {t('continue')}{selected.length > 0 ? ` (${selected.length})` : ''}
         </Text>
       </TouchableOpacity>
     </View>
@@ -100,33 +103,34 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
 
 const PermissionsStep = ({ onFinish }) => {
   const { hPad } = useResponsive();
+  const { t } = useTranslation();
   const perms = [
-    { icon: 'notifications', label: 'Notifications', desc: 'Get lesson reminders' },
-    { icon: 'camera', label: 'Camera', desc: 'Upload profile photo' },
-    { icon: 'folder', label: 'Storage', desc: 'Save content offline' },
+    { icon: 'notifications', labelKey: 'notifications', descKey: 'notificationDesc' },
+    { icon: 'camera', labelKey: 'camera', descKey: 'cameraDesc' },
+    { icon: 'folder', labelKey: 'storage', descKey: 'storageDesc' },
   ];
   return (
     <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
-      <Text style={styles.stepTitle}>Quick permissions</Text>
-      <Text style={styles.stepSub}>EduTok works best with these enabled.</Text>
+      <Text style={styles.stepTitle}>{t('quickPermissions')}</Text>
+      <Text style={styles.stepSub}>{t('permissionsSubtext')}</Text>
       <View style={styles.permList}>
         {perms.map((p) => (
-          <View key={p.label} style={styles.permRow}>
+          <View key={p.labelKey} style={styles.permRow}>
             <View style={styles.permIcon}>
               <Ionicons name={p.icon} size={22} color={COLORS.secondary} />
             </View>
             <View style={styles.permText}>
-              <Text style={styles.permLabel}>{p.label}</Text>
-              <Text style={styles.permDesc}>{p.desc}</Text>
+              <Text style={styles.permLabel}>{t(p.labelKey)}</Text>
+              <Text style={styles.permDesc}>{t(p.descKey)}</Text>
             </View>
           </View>
         ))}
       </View>
       <TouchableOpacity style={styles.primaryBtn} onPress={onFinish} activeOpacity={0.85}>
-        <Text style={styles.primaryBtnText}>Allow & Continue</Text>
+        <Text style={styles.primaryBtnText}>{t('allowAndContinue')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.skipBtn} onPress={onFinish}>
-        <Text style={styles.skipText}>Skip for now</Text>
+        <Text style={styles.skipText}>{t('skip')}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -17,6 +17,7 @@ import { COLORS, SIZES } from '../utils/constants';
 import { isValidUsername, isValidPhone, passwordStrength } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const InputField = ({ icon, placeholder, value, onChangeText, secureEntry, keyboardType, error, rightElement }) => {
   const [secure, setSecure] = useState(secureEntry);
@@ -68,6 +69,7 @@ const StrengthBar = ({ password }) => {
 const AuthScreen = () => {
   const { signIn, signUp } = useAuth();
   const { formPad, formMaxW, isLandscape } = useResponsive();
+  const { t } = useTranslation();
   const [mode, setMode] = useState('signin');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', fullName: '', phone: '', password: '' });
@@ -77,20 +79,20 @@ const AuthScreen = () => {
 
   const validate = useCallback(() => {
     const e = {};
-    if (!form.username.trim()) e.username = 'Username is required';
+    if (!form.username.trim()) e.username = t('usernameRequired');
     else if (mode === 'signup' && !isValidUsername(form.username))
-      e.username = '3-20 chars, letters/numbers/underscore only';
+      e.username = t('invalidUsername');
     if (mode === 'signup') {
-      if (!form.fullName.trim()) e.fullName = 'Full name is required';
-      if (!form.phone.trim()) e.phone = 'Phone number is required';
-      else if (!isValidPhone(form.phone)) e.phone = 'Enter a valid phone number';
+      if (!form.fullName.trim()) e.fullName = t('fullNameRequired');
+      if (!form.phone.trim()) e.phone = t('phoneRequired');
+      else if (!isValidPhone(form.phone)) e.phone = t('invalidPhone');
     }
-    if (!form.password) e.password = 'Password is required';
+    if (!form.password) e.password = t('passwordRequired');
     else if (mode === 'signup' && form.password.length < 8)
-      e.password = 'Minimum 8 characters';
+      e.password = t('minPassword');
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [form, mode]);
+  }, [form, mode, t]);
 
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
@@ -107,7 +109,7 @@ const AuthScreen = () => {
         });
       }
     } catch (err) {
-      Alert.alert('Error', err.message || 'Something went wrong.');
+      Alert.alert(t('error'), err.message || t('somethingWentWrong'));
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,7 @@ const AuthScreen = () => {
               <Ionicons name="play-circle" size={40} color={COLORS.primary} />
             </View>
             <Text style={styles.logoText}>EduTok</Text>
-            <Text style={styles.logoSub}>Micro-learning, maximum growth.</Text>
+            <Text style={styles.logoSub}>{t('tagline')}</Text>
           </View>
 
           {/* Mode toggle */}
@@ -152,7 +154,7 @@ const AuthScreen = () => {
               onPress={() => mode !== 'signin' && toggleMode()}
             >
               <Text style={[styles.modeBtnText, !isSignUp && styles.modeBtnTextActive]}>
-                Sign In
+                {t('signIn')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -160,7 +162,7 @@ const AuthScreen = () => {
               onPress={() => mode !== 'signup' && toggleMode()}
             >
               <Text style={[styles.modeBtnText, isSignUp && styles.modeBtnTextActive]}>
-                Sign Up
+                {t('signUp')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -170,7 +172,7 @@ const AuthScreen = () => {
             {isSignUp && (
               <InputField
                 icon="person-outline"
-                placeholder="Full Name"
+                placeholder={t('fullName')}
                 value={form.fullName}
                 onChangeText={set('fullName')}
                 error={errors.fullName}
@@ -178,7 +180,7 @@ const AuthScreen = () => {
             )}
             <InputField
               icon="at-outline"
-              placeholder="Username"
+              placeholder={t('username')}
               value={form.username}
               onChangeText={set('username')}
               error={errors.username}
@@ -186,7 +188,7 @@ const AuthScreen = () => {
             {isSignUp && (
               <InputField
                 icon="call-outline"
-                placeholder="Phone Number (e.g. +1 555 000 0000)"
+                placeholder={t('phone')}
                 value={form.phone}
                 onChangeText={set('phone')}
                 keyboardType="phone-pad"
@@ -195,7 +197,7 @@ const AuthScreen = () => {
             )}
             <InputField
               icon="lock-closed-outline"
-              placeholder="Password"
+              placeholder={t('password')}
               value={form.password}
               onChangeText={set('password')}
               secureEntry
@@ -205,7 +207,7 @@ const AuthScreen = () => {
 
             {!isSignUp && (
               <TouchableOpacity style={styles.forgotBtn}>
-                <Text style={styles.forgotText}>Forgot password?</Text>
+                <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
               </TouchableOpacity>
             )}
 
@@ -219,7 +221,7 @@ const AuthScreen = () => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  {isSignUp ? t('createAccount') : t('signIn')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -228,10 +230,10 @@ const AuthScreen = () => {
           {/* Switch link */}
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              {isSignUp ? t('haveAccount') : t('noAccount')}
             </Text>
             <TouchableOpacity onPress={toggleMode}>
-              <Text style={styles.switchLink}>{isSignUp ? 'Sign In' : 'Sign Up'}</Text>
+              <Text style={styles.switchLink}>{isSignUp ? t('signIn') : t('signUp')}</Text>
             </TouchableOpacity>
           </View>
           </View>

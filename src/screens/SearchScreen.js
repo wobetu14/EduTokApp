@@ -14,6 +14,7 @@ import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const SearchResultCard = ({ course, org, onPress }) => (
   <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
@@ -36,6 +37,7 @@ const SearchResultCard = ({ course, org, onPress }) => (
 const SearchScreen = ({ navigation }) => {
   const { courses, organizations, isLoading } = useCourses();
   const { hPad } = useResponsive();
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState(null);
 
@@ -65,7 +67,7 @@ const SearchScreen = ({ navigation }) => {
         <Ionicons name="search" size={18} color={COLORS.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search courses, topics, organizations..."
+          placeholder={t('searchPlaceholderFull')}
           placeholderTextColor={COLORS.textMuted}
           value={query}
           onChangeText={setQuery}
@@ -116,7 +118,7 @@ const SearchScreen = ({ navigation }) => {
       {/* Results count */}
       {(query || selectedCat) && (
         <Text style={styles.resultCount}>
-          {results.length} {results.length === 1 ? 'course' : 'courses'} found
+          {results.length} {results.length === 1 ? t('courseFound') : t('coursesFound')}
         </Text>
       )}
 
@@ -141,14 +143,14 @@ const SearchScreen = ({ navigation }) => {
               {query || selectedCat ? (
                 <>
                   <Ionicons name="search-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.emptyTitle}>No results</Text>
-                  <Text style={styles.emptySub}>Try different keywords or filters</Text>
+                  <Text style={styles.emptyTitle}>{t('noResultsTitle')}</Text>
+                  <Text style={styles.emptySub}>{t('tryDifferentKeywords')}</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="compass-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.emptyTitle}>Search for courses</Text>
-                  <Text style={styles.emptySub}>Find lessons on any topic</Text>
+                  <Text style={styles.emptyTitle}>{t('searchForCoursesTitle')}</Text>
+                  <Text style={styles.emptySub}>{t('findLessonsOnAnyTopic')}</Text>
                 </>
               )}
             </View>

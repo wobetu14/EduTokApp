@@ -13,38 +13,42 @@ import { useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES } from '../utils/constants';
+import { useTranslation } from '../utils/useTranslation';
 
-const TrueFalseQuestion = ({ question, onAnswer, answered, selected }) => (
-  <View style={styles.qBody}>
-    <View style={styles.tfRow}>
-      {[true, false].map((val) => {
-        const isSelected = selected === val;
-        const isCorrect = answered && val === question.correctAnswer;
-        const isWrong = answered && isSelected && val !== question.correctAnswer;
-        return (
-          <TouchableOpacity
-            key={String(val)}
-            style={[
-              styles.tfBtn,
-              isSelected && !answered && styles.tfBtnSelected,
-              isCorrect && styles.tfBtnCorrect,
-              isWrong && styles.tfBtnWrong,
-            ]}
-            onPress={() => !answered && onAnswer(val)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tfBtnText}>{val ? 'True' : 'False'}</Text>
-            {answered && (isCorrect ? (
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-            ) : isWrong ? (
-              <Ionicons name="close-circle" size={20} color={COLORS.error} />
-            ) : null)}
-          </TouchableOpacity>
-        );
-      })}
+const TrueFalseQuestion = ({ question, onAnswer, answered, selected }) => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.qBody}>
+      <View style={styles.tfRow}>
+        {[true, false].map((val) => {
+          const isSelected = selected === val;
+          const isCorrect = answered && val === question.correctAnswer;
+          const isWrong = answered && isSelected && val !== question.correctAnswer;
+          return (
+            <TouchableOpacity
+              key={String(val)}
+              style={[
+                styles.tfBtn,
+                isSelected && !answered && styles.tfBtnSelected,
+                isCorrect && styles.tfBtnCorrect,
+                isWrong && styles.tfBtnWrong,
+              ]}
+              onPress={() => !answered && onAnswer(val)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tfBtnText}>{val ? t('trueText') : t('falseText')}</Text>
+              {answered && (isCorrect ? (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+              ) : isWrong ? (
+                <Ionicons name="close-circle" size={20} color={COLORS.error} />
+              ) : null)}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
   <View style={styles.qBody}>
@@ -84,6 +88,7 @@ const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
 
 const QuizModal = ({ visible, quiz, onPass, onClose }) => {
   const { width: W } = useWindowDimensions();
+  const { t } = useTranslation();
   const isWide = W >= 600;
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -157,7 +162,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
           <View style={styles.header}>
             <View style={styles.quizBadge}>
               <Ionicons name="help-circle" size={16} color={COLORS.primary} />
-              <Text style={styles.quizBadgeText}>Quiz Time</Text>
+              <Text style={styles.quizBadgeText}>{t('quizTime')}</Text>
             </View>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={22} color={COLORS.textSecondary} />
@@ -175,27 +180,25 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                 />
               </View>
               <Text style={styles.resultTitle}>
-                {passed ? '🎉 Excellent!' : 'Not quite...'}
+                {passed ? `🎉 ${t('excellent')}` : t('notQuite')}
               </Text>
               <Text style={styles.resultSub}>
-                {passed
-                  ? 'You passed the quiz!'
-                  : 'Review the lesson and try again.'}
+                {passed ? t('quizPassedMsg') : t('quizFailedMsg')}
               </Text>
               <View style={styles.scoreBox}>
                 <Text style={styles.scoreNum}>{score}/{total}</Text>
-                <Text style={styles.scoreLabel}>Correct</Text>
+                <Text style={styles.scoreLabel}>{t('correctLabel')}</Text>
               </View>
               <View style={styles.resultBtns}>
                 {!passed && (
                   <TouchableOpacity style={styles.retryBtn} onPress={reset}>
                     <Ionicons name="refresh" size={18} color={COLORS.text} />
-                    <Text style={styles.retryBtnText}>Retry Quiz</Text>
+                    <Text style={styles.retryBtnText}>{t('retryQuiz')}</Text>
                   </TouchableOpacity>
                 )}
                 {passed && (
                   <TouchableOpacity style={styles.nextBtn} onPress={handleContinue}>
-                    <Text style={styles.nextBtnText}>Continue</Text>
+                    <Text style={styles.nextBtnText}>{t('continue')}</Text>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </TouchableOpacity>
                 )}
@@ -219,7 +222,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
 
               {/* Question */}
               <Text style={styles.qNum}>
-                Question {currentQ + 1} of {total}
+                {t('question')} {currentQ + 1} {t('of')} {total}
               </Text>
               <Text style={styles.qText}>{question.text}</Text>
 
@@ -256,7 +259,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                     styles.feedbackText,
                     { color: selected === question.correctAnswer ? COLORS.success : COLORS.error },
                   ]}>
-                    {selected === question.correctAnswer ? 'Correct!' : 'Incorrect'}
+                    {selected === question.correctAnswer ? t('correctFeedback') : t('incorrectFeedback')}
                   </Text>
                 </View>
               )}
@@ -264,7 +267,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
               {answered && (
                 <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
                   <Text style={styles.nextBtnText}>
-                    {currentQ + 1 >= total ? 'See Results' : 'Next'}
+                    {currentQ + 1 >= total ? t('seeResults') : t('nextQuestion')}
                   </Text>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </TouchableOpacity>

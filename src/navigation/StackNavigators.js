@@ -7,6 +7,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CourseProfileScreen from '../screens/CourseProfileScreen';
 import OrganizationProfileScreen from '../screens/OrganizationProfileScreen';
 import LessonPlaybackScreen from '../screens/LessonPlaybackScreen';
+import CertificateScreen from '../screens/CertificateScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +28,7 @@ export const ForYouStack = () => (
     <Stack.Screen name="CourseProfile" component={CourseProfileScreen} />
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
+    <Stack.Screen name="Certificate" component={CertificateScreen} />
   </Stack.Navigator>
 );
 
@@ -36,6 +38,7 @@ export const ExploreStack = () => (
     <Stack.Screen name="CourseProfile" component={CourseProfileScreen} />
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
+    <Stack.Screen name="Certificate" component={CertificateScreen} />
   </Stack.Navigator>
 );
 
@@ -45,6 +48,7 @@ export const SearchStack = () => (
     <Stack.Screen name="CourseProfile" component={CourseProfileScreen} />
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
+    <Stack.Screen name="Certificate" component={CertificateScreen} />
   </Stack.Navigator>
 );
 
@@ -54,5 +58,6 @@ export const ProfileStack = () => (
     <Stack.Screen name="CourseProfile" component={CourseProfileScreen} />
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
+    <Stack.Screen name="Certificate" component={CertificateScreen} />
   </Stack.Navigator>
 );

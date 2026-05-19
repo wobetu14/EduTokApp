@@ -16,6 +16,7 @@ import { COLORS, SIZES } from '../utils/constants';
 import { formatTimeAgo } from '../utils/helpers';
 import * as api from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../utils/useTranslation';
 
 const CommentItem = ({ item }) => (
   <View style={styles.commentRow}>
@@ -35,6 +36,7 @@ const CommentItem = ({ item }) => (
 
 const CommentThread = ({ lessonId, onClose }) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [comments, setComments] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);

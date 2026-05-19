@@ -30,6 +30,7 @@ import CommentThread from '../components/CommentThread';
 import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
+import { useTranslation } from '../utils/useTranslation';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -124,6 +125,7 @@ const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label })
 
 const ForYouScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const {
     courses, lessons, organizations, isLoading,
     isLiked, isFavorited, isEnrolled, isQuizPassed,
@@ -298,7 +300,7 @@ const ForYouScreen = ({ navigation }) => {
     return (
       <View style={styles.center}>
         <Ionicons name="book-outline" size={48} color={COLORS.textMuted} />
-        <Text style={styles.emptyText}>No lessons available</Text>
+        <Text style={styles.emptyText}>{t('noLessonsAvailable')}</Text>
       </View>
     );
   }
@@ -350,7 +352,7 @@ const ForYouScreen = ({ navigation }) => {
 
           {/* Feed position counter (top-right) */}
           <View style={[styles.counter, { top: insets.top + 10 }]}>
-            <Text style={styles.counterText}>{currentIndex + 1} / {feed.length} courses</Text>
+            <Text style={styles.counterText}>{currentIndex + 1} / {feed.length} {t('courses').toLowerCase()}</Text>
           </View>
 
           {/* Bottom-left: course title + lesson info */}
@@ -381,7 +383,7 @@ const ForYouScreen = ({ navigation }) => {
               {lesson.hasQuiz && (
                 <View style={[styles.badge, styles.badgeQuiz]}>
                   <Ionicons name="help-circle" size={11} color={COLORS.primary} />
-                  <Text style={[styles.badgeText, { color: COLORS.primary }]}>Quiz</Text>
+                  <Text style={[styles.badgeText, { color: COLORS.primary }]}>{t('quiz')}</Text>
                 </View>
               )}
             </View>
@@ -394,12 +396,12 @@ const ForYouScreen = ({ navigation }) => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.7)" />
-                  <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>Tap for next course</Text>
+                  <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextCourse')}</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.swipeHint}>
                   <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.swipeHintText}>Swipe up for next course</Text>
+                  <Text style={styles.swipeHintText}>{t('swipeForNextCourse')}</Text>
                 </View>
               )
             )}
