@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../utils/constants';
 import {
   ORGANIZATIONS,
+  INSTRUCTORS,
   COURSES,
   LESSONS,
   DEFAULT_USER,
@@ -22,13 +23,14 @@ export const removeKey = async (key) => {
   await AsyncStorage.removeItem(key);
 };
 
-const SEED_VERSION = '3'; // bump when mockData schema changes
+const SEED_VERSION = '4'; // bump when mockData schema changes
 
 // --- Seed initial data if not present or version changed ---
 export const seedDataIfNeeded = async () => {
   const storedVersion = await AsyncStorage.getItem('seed_version');
   if (storedVersion !== SEED_VERSION) {
     await storeJSON(STORAGE_KEYS.organizations, ORGANIZATIONS);
+    await storeJSON(STORAGE_KEYS.instructors, INSTRUCTORS);
     await storeJSON(STORAGE_KEYS.courses, COURSES);
     await storeJSON(STORAGE_KEYS.lessons, LESSONS);
     await AsyncStorage.setItem('seed_version', SEED_VERSION);
@@ -57,7 +59,12 @@ export const getProgress = async () => {
   return p ?? { ...DEFAULT_PROGRESS };
 };
 
-// --- Courses / Orgs / Lessons ---
+// --- Courses / Orgs / Lessons / Instructors ---
+export const getInstructors = async () => {
+  const data = await getJSON(STORAGE_KEYS.instructors);
+  return data ?? INSTRUCTORS;
+};
+
 export const getCourses = async () => {
   const data = await getJSON(STORAGE_KEYS.courses);
   return data ?? COURSES;

@@ -13,6 +13,7 @@ const CourseContext = createContext(null);
 const initialState = {
   courses: [],
   organizations: [],
+  instructors: [],
   lessons: [],
   progress: {
     enrolledCourses: [],
@@ -34,6 +35,7 @@ const reducer = (state, action) => {
         ...state,
         courses: action.courses,
         organizations: action.organizations,
+        instructors: action.instructors,
         lessons: action.lessons,
         progress: action.progress,
         isLoading: false,
@@ -57,13 +59,14 @@ export const CourseProvider = ({ children }) => {
       return;
     }
     const load = async () => {
-      const [courses, organizations, lessons, progress] = await Promise.all([
+      const [courses, organizations, instructors, lessons, progress] = await Promise.all([
         api.fetchCourses(),
         api.fetchOrganizations(),
+        api.fetchInstructors(),
         api.fetchLessons(),
         api.fetchProgress(),
       ]);
-      dispatch({ type: 'LOADED', courses, organizations, lessons, progress });
+      dispatch({ type: 'LOADED', courses, organizations, instructors, lessons, progress });
     };
     load();
   }, [isSignedIn]);
@@ -150,18 +153,24 @@ export const CourseProvider = ({ children }) => {
     [state.organizations]
   );
 
+  const visibleCourses = state.courses.filter(
+    (c) => c.status === 'approved' && c.visibility === 'public'
+  );
+
   const getCoursesForOrg = useCallback(
-    (orgId) => state.courses.filter((c) => c.organizationId === orgId),
+    (orgId) => state.courses
+      .filter((c) => c.organizationId === orgId && c.status === 'approved' && c.visibility === 'public'),
     [state.courses]
   );
 
   const getPersonalizedCourses = useCallback(
     (preferences = []) => {
-      if (!preferences.length) return state.courses;
-      const preferred = state.courses.filter((c) => preferences.includes(c.category));
-      const others = state.courses.filter((c) => !preferences.includes(c.category));
+      if (!preferences.length) return visibleCourses;
+      const preferred = visibleCourses.filter((c) => preferences.includes(c.category));
+      const others = visibleCourses.filter((c) => !preferences.includes(c.category));
       return [...preferred, ...others];
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.courses]
   );
 
@@ -169,6 +178,8 @@ export const CourseProvider = ({ children }) => {
     <CourseContext.Provider
       value={{
         ...state,
+        visibleCourses,
+        authors: state.instructors,
         enroll,
         completeLesson,
         toggleLike,

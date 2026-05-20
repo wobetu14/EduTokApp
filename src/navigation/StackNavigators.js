@@ -8,6 +8,7 @@ import CourseProfileScreen from '../screens/CourseProfileScreen';
 import OrganizationProfileScreen from '../screens/OrganizationProfileScreen';
 import LessonPlaybackScreen from '../screens/LessonPlaybackScreen';
 import CertificateScreen from '../screens/CertificateScreen';
+import AuthorProfileScreen from '../screens/AuthorProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +30,7 @@ export const ForYouStack = () => (
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
+    <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -39,6 +41,7 @@ export const ExploreStack = () => (
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
+    <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -49,6 +52,7 @@ export const SearchStack = () => (
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
+    <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
   </Stack.Navigator>
 );
 
@@ -59,5 +63,6 @@ export const ProfileStack = () => (
     <Stack.Screen name="OrganizationProfile" component={OrganizationProfileScreen} />
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
+    <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
   </Stack.Navigator>
 );

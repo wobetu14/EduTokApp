@@ -69,6 +69,7 @@ export const STORAGE_KEYS = {
   courses: '@edutok_courses',
   organizations: '@edutok_organizations',
   lessons: '@edutok_lessons',
+  instructors: '@edutok_instructors',
   hasOnboarded: '@edutok_onboarded',
   comments: '@edutok_comments',
 };
@@ -77,4 +78,16 @@ export const DIFFICULTY = {
   Beginner: { color: '#4CAF50', label: 'Beginner' },
   Intermediate: { color: '#FF9800', label: 'Intermediate' },
   Advanced: { color: '#F44336', label: 'Advanced' },
+};
+
+export const COURSE_STATUS = {
+  pending:  { label: 'Pending Review', color: '#FF9800', icon: 'time-outline' },
+  approved: { label: 'Approved',       color: '#4CAF50', icon: 'checkmark-circle-outline' },
+  rejected: { label: 'Rejected',       color: '#F44336', icon: 'close-circle-outline' },
+};
+
+export const COURSE_VISIBILITY = {
+  public:   { label: 'Public',   icon: 'globe-outline',    color: '#25F4EE' },
+  unlisted: { label: 'Unlisted', icon: 'link-outline',     color: '#FF9800' },
+  private:  { label: 'Private',  icon: 'lock-closed-outline', color: '#AAAAAA' },
 };

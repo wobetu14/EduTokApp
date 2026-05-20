@@ -8,10 +8,11 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, CATEGORIES, DIFFICULTY } from '../utils/constants';
+import { COLORS, SIZES, CATEGORIES, DIFFICULTY, COURSE_VISIBILITY } from '../utils/constants';
 import LessonCard from '../components/LessonCard';
 import ProgressBar from '../components/ProgressBar';
 import { useCourses } from '../context/CourseContext';
@@ -42,6 +43,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
     () => organizations.find((o) => o.id === course?.organizationId),
     [organizations, course]
   );
+  const visInfo = COURSE_VISIBILITY[course?.visibility] || COURSE_VISIBILITY.public;
   const lessons = useMemo(() => getLessonsForCourse(courseId), [getLessonsForCourse, courseId]);
   const enrolled = isEnrolled(courseId);
   const progress = getCourseProgress(courseId);
@@ -55,6 +57,13 @@ const CourseProfileScreen = ({ route, navigation }) => {
       </View>
     );
   }
+
+  const handleShare = () => {
+    Share.share({
+      message: `Check out "${course.title}" by ${org?.name || 'EduTok'} on EduTok!\n${lessons.length} lessons · ${formatMinutes(course.totalDuration)}`,
+      title: course.title,
+    });
+  };
 
   const handleEnroll = async () => {
     await enroll(courseId);
@@ -101,13 +110,26 @@ const CourseProfileScreen = ({ route, navigation }) => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+          <Ionicons name="share-social-outline" size={22} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.heroContent}>
-          {catInfo && (
-            <View style={[styles.catBadge, { backgroundColor: catInfo.color + '33' }]}>
-              <Ionicons name={catInfo.icon} size={12} color={catInfo.color} />
-              <Text style={[styles.catBadgeText, { color: catInfo.color }]}>{catInfo.label}</Text>
-            </View>
-          )}
+          <View style={styles.badgeRow}>
+            {catInfo && (
+              <View style={[styles.catBadge, { backgroundColor: catInfo.color + '33' }]}>
+                <Ionicons name={catInfo.icon} size={12} color={catInfo.color} />
+                <Text style={[styles.catBadgeText, { color: catInfo.color }]}>{catInfo.label}</Text>
+              </View>
+            )}
+            {course.visibility && course.visibility !== 'public' && (
+              <View style={[styles.visBadge, { backgroundColor: visInfo.color + '22', borderColor: visInfo.color + '66' }]}>
+                <Ionicons name={visInfo.icon} size={11} color={visInfo.color} />
+                <Text style={[styles.visBadgeText, { color: visInfo.color }]}>
+                  {t(`course${course.visibility.charAt(0).toUpperCase() + course.visibility.slice(1)}`)}
+                </Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.heroTitle}>{course.title}</Text>
           {org && (
             <TouchableOpacity
@@ -226,10 +248,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  shareBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.overlayDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroContent: {
     padding: 16,
     paddingBottom: 20,
     gap: 8,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   catBadge: {
     flexDirection: 'row',
@@ -241,6 +279,17 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.borderRadiusFull,
   },
   catBadgeText: { fontSize: SIZES.xs, fontWeight: '700' },
+  visBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: SIZES.borderRadiusFull,
+    borderWidth: 1,
+  },
+  visBadgeText: { fontSize: SIZES.xs, fontWeight: '600' },
   heroTitle: {
     color: '#fff',
     fontSize: SIZES.xl,

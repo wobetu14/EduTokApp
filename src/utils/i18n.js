@@ -137,6 +137,11 @@ const translations = {
     yourProgress: 'Your progress',
     courseCompleted: 'Course completed!',
     enrollInCourse: 'Enroll in this Course',
+    shareCourse: 'Share Course',
+    coursePublic: 'Public',
+    courseUnlisted: 'Unlisted',
+    coursePrivate: 'Private',
+    viewInstructor: 'View Instructor',
     // Search
     searchPlaceholderFull: 'Search courses, topics, organizations...',
     courseFound: 'course found',
@@ -314,6 +319,11 @@ const translations = {
     yourProgress: 'የእርስዎ ሂደት',
     courseCompleted: 'ኮርሱ ተጠናቀቀ!',
     enrollInCourse: 'ለዚህ ኮርስ ተመዝገብ',
+    shareCourse: 'ኮርስ አጋራ',
+    coursePublic: 'ህዝባዊ',
+    courseUnlisted: 'ያልተዘረዘረ',
+    coursePrivate: 'ግላዊ',
+    viewInstructor: 'አስተማሪ ይመልከቱ',
     // Search
     searchPlaceholderFull: 'ኮርሶችን፣ ርዕሶችን፣ ድርጅቶችን ፈልግ...',
     courseFound: 'ኮርስ ተገኘ',

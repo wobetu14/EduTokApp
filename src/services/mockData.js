@@ -12,6 +12,36 @@ const engagementCounts = (id) => {
   };
 };
 
+export const INSTRUCTORS = [
+  {
+    id: 'inst1',
+    organizationId: 'org1',
+    name: 'Dr. Sarah Chen',
+    avatar: 'https://picsum.photos/seed/drchen/200/200',
+    bio: 'Software engineer and educator with 10+ years teaching Python, AI, and full-stack web development across 50,000+ learners.',
+    expertise: ['Python', 'AI/ML', 'Web Dev'],
+    followersCount: 24800,
+  },
+  {
+    id: 'inst2',
+    organizationId: 'org2',
+    name: 'Prof. James Osei',
+    avatar: 'https://picsum.photos/seed/profosei/200/200',
+    bio: 'Mathematics professor and cognitive scientist making calculus and the psychology of learning approachable for everyone.',
+    expertise: ['Calculus', 'Statistics', 'Learning Science'],
+    followersCount: 18200,
+  },
+  {
+    id: 'inst3',
+    organizationId: 'org3',
+    name: 'Amara Nwosu',
+    avatar: 'https://picsum.photos/seed/amara/200/200',
+    bio: 'Business strategist and financial educator. Former management consultant, now helping learners build real-world business skills.',
+    expertise: ['Business Strategy', 'Personal Finance', 'Digital Marketing'],
+    followersCount: 31500,
+  },
+];
+
 export const ORGANIZATIONS = [
   {
     id: 'org1',
@@ -46,6 +76,9 @@ export const COURSES = [
   {
     id: 'course1',
     organizationId: 'org1',
+    instructorId: 'inst1',
+    status: 'approved',
+    visibility: 'public',
     title: 'Python Fundamentals',
     thumbnail: 'https://picsum.photos/seed/python/400/300',
     description:
@@ -61,6 +94,9 @@ export const COURSES = [
   {
     id: 'course2',
     organizationId: 'org1',
+    instructorId: 'inst1',
+    status: 'approved',
+    visibility: 'public',
     title: 'Web Development Basics',
     thumbnail: 'https://picsum.photos/seed/webdev/400/300',
     description:
@@ -76,6 +112,9 @@ export const COURSES = [
   {
     id: 'course3',
     organizationId: 'org1',
+    instructorId: 'inst1',
+    status: 'approved',
+    visibility: 'public',
     title: 'AI & Machine Learning Intro',
     thumbnail: 'https://picsum.photos/seed/aiml/400/300',
     description:
@@ -91,6 +130,9 @@ export const COURSES = [
   {
     id: 'course4',
     organizationId: 'org2',
+    instructorId: 'inst2',
+    status: 'approved',
+    visibility: 'public',
     title: 'Calculus Made Simple',
     thumbnail: 'https://picsum.photos/seed/calculus/400/300',
     description:
@@ -106,10 +148,13 @@ export const COURSES = [
   {
     id: 'course5',
     organizationId: 'org2',
+    instructorId: 'inst2',
+    status: 'approved',
+    visibility: 'unlisted',
     title: 'Psychology of Learning',
     thumbnail: 'https://picsum.photos/seed/psych/400/300',
     description:
-      'Understand how the brain learns, retains information, and builds habits for peak performance.',
+      'Internal course: Understand how the brain learns, retains information, and builds habits for peak performance. Shared with enrolled learners only.',
     category: 'psychology',
     tags: ['psychology', 'memory', 'habits', 'learning'],
     lessonIds: ['l15', 'l16', 'l17', 'l18'],
@@ -121,6 +166,9 @@ export const COURSES = [
   {
     id: 'course6',
     organizationId: 'org3',
+    instructorId: 'inst3',
+    status: 'approved',
+    visibility: 'public',
     title: 'Business Strategy 101',
     thumbnail: 'https://picsum.photos/seed/bizstrat/400/300',
     description:
@@ -136,6 +184,9 @@ export const COURSES = [
   {
     id: 'course7',
     organizationId: 'org3',
+    instructorId: 'inst3',
+    status: 'approved',
+    visibility: 'public',
     title: 'Personal Finance Mastery',
     thumbnail: 'https://picsum.photos/seed/finance/400/300',
     description:
@@ -151,6 +202,9 @@ export const COURSES = [
   {
     id: 'course8',
     organizationId: 'org3',
+    instructorId: 'inst3',
+    status: 'approved',
+    visibility: 'public',
     title: 'Digital Marketing Essentials',
     thumbnail: 'https://picsum.photos/seed/digimkt/400/300',
     description:

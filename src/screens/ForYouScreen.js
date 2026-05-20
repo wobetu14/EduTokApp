@@ -127,7 +127,7 @@ const ForYouScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const {
-    courses, lessons, organizations, isLoading,
+    visibleCourses: courses, lessons, organizations, isLoading,
     isLiked, isFavorited, isEnrolled, isQuizPassed,
     toggleLike, toggleFavorite, enroll,
     completeLesson, recordQuizPass,

@@ -35,7 +35,7 @@ const SearchResultCard = ({ course, org, onPress }) => (
 );
 
 const SearchScreen = ({ navigation }) => {
-  const { courses, organizations, isLoading } = useCourses();
+  const { visibleCourses: courses, organizations, isLoading } = useCourses();
   const { hPad } = useResponsive();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');

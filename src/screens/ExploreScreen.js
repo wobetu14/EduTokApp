@@ -31,7 +31,7 @@ const OrgCard = ({ org, courseCount, onPress }) => {
 };
 
 const ExploreScreen = ({ navigation }) => {
-  const { isLoading, courses, organizations } = useCourses();
+  const { isLoading, visibleCourses: courses, organizations } = useCourses();
   const { hPad, hCardW, isTablet } = useResponsive();
   const { t } = useTranslation();
   const [view, setView] = useState('courses');

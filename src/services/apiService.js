@@ -61,6 +61,11 @@ export const fetchOrganizations = async () => {
   return storage.getOrganizations();
 };
 
+export const fetchInstructors = async () => {
+  await delay(200);
+  return storage.getInstructors();
+};
+
 export const fetchLessons = async () => {
   await delay(400);
   return storage.getLessons();
