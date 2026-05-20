@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { requestPermissions, scheduleDailyReminder } from '../services/notificationService';
+import AppText from '../components/AppText';
 
 const STEPS = ['welcome', 'interests', 'permissions'];
 
@@ -36,20 +37,20 @@ const WelcomeStep = ({ onNext }) => {
     <View style={[styles.welcomeIcon, isLandscape && { marginTop: 8, marginBottom: 8 }]}>
       <Ionicons name="school" size={isLandscape ? 52 : 80} color={COLORS.primary} />
     </View>
-    <Text style={[styles.welcomeTitle, isLandscape && { fontSize: 24, lineHeight: 32, marginBottom: 6 }]}>{t('welcome')} 🎓</Text>
-    <Text style={[styles.welcomeSub, isLandscape && { marginBottom: 16 }]}>
+    <AppText style={[styles.welcomeTitle, isLandscape && { fontSize: 24, lineHeight: 32, marginBottom: 6 }]}>{t('welcome')} 🎓</AppText>
+    <AppText style={[styles.welcomeSub, isLandscape && { marginBottom: 16 }]}>
       {t('welcomeSubLong')}
-    </Text>
+    </AppText>
     <View style={[styles.featureList, isLandscape && { gap: 8, marginBottom: 20 }]}>
       {features.map((f) => (
         <View key={f.key} style={styles.featureRow}>
           <Ionicons name={f.icon} size={20} color={COLORS.secondary} />
-          <Text style={styles.featureText}>{t(f.key)}</Text>
+          <AppText style={styles.featureText}>{t(f.key)}</AppText>
         </View>
       ))}
     </View>
     <TouchableOpacity style={styles.primaryBtn} onPress={onNext} activeOpacity={0.85}>
-      <Text style={styles.primaryBtnText}>{t('getStarted')}</Text>
+      <AppText style={styles.primaryBtnText}>{t('getStarted')}</AppText>
       <Ionicons name="arrow-forward" size={20} color="#fff" />
     </TouchableOpacity>
   </View>
@@ -62,10 +63,10 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
   const canContinue = selected.length > 0;
   return (
     <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
-      <Text style={styles.stepTitle}>{t('chooseInterests')}</Text>
-      <Text style={styles.stepSub}>
+      <AppText style={styles.stepTitle}>{t('chooseInterests')}</AppText>
+      <AppText style={styles.stepSub}>
         {t('chooseInterestsFeed')}
-      </Text>
+      </AppText>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.catScroll}>
         <View style={styles.catGrid}>
           {CATEGORIES.map((cat) => {
@@ -78,7 +79,7 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
                 activeOpacity={0.8}
               >
                 <Ionicons name={cat.icon} size={22} color={active ? cat.color : COLORS.textSecondary} />
-                <Text style={[styles.catLabel, active && { color: cat.color }]}>{cat.label}</Text>
+                <AppText style={[styles.catLabel, active && { color: cat.color }]}>{cat.label}</AppText>
                 {active && (
                   <View style={[styles.catCheck, { backgroundColor: cat.color }]}>
                     <Ionicons name="checkmark" size={12} color="#fff" />
@@ -94,9 +95,9 @@ const InterestsStep = ({ selected, onToggle, onNext }) => {
         onPress={canContinue ? onNext : undefined}
         activeOpacity={0.85}
       >
-        <Text style={styles.primaryBtnText}>
+        <AppText style={styles.primaryBtnText}>
           {t('continue')}{selected.length > 0 ? ` (${selected.length})` : ''}
-        </Text>
+        </AppText>
       </TouchableOpacity>
     </View>
   );
@@ -112,8 +113,8 @@ const PermissionsStep = ({ onFinish }) => {
   ];
   return (
     <View style={[styles.stepContainer, { paddingHorizontal: hPad }]}>
-      <Text style={styles.stepTitle}>{t('quickPermissions')}</Text>
-      <Text style={styles.stepSub}>{t('permissionsSubtext')}</Text>
+      <AppText style={styles.stepTitle}>{t('quickPermissions')}</AppText>
+      <AppText style={styles.stepSub}>{t('permissionsSubtext')}</AppText>
       <View style={styles.permList}>
         {perms.map((p) => (
           <View key={p.labelKey} style={styles.permRow}>
@@ -121,17 +122,17 @@ const PermissionsStep = ({ onFinish }) => {
               <Ionicons name={p.icon} size={22} color={COLORS.secondary} />
             </View>
             <View style={styles.permText}>
-              <Text style={styles.permLabel}>{t(p.labelKey)}</Text>
-              <Text style={styles.permDesc}>{t(p.descKey)}</Text>
+              <AppText style={styles.permLabel}>{t(p.labelKey)}</AppText>
+              <AppText style={styles.permDesc}>{t(p.descKey)}</AppText>
             </View>
           </View>
         ))}
       </View>
       <TouchableOpacity style={styles.primaryBtn} onPress={onFinish} activeOpacity={0.85}>
-        <Text style={styles.primaryBtnText}>{t('allowAndContinue')}</Text>
+        <AppText style={styles.primaryBtnText}>{t('allowAndContinue')}</AppText>
       </TouchableOpacity>
       <TouchableOpacity style={styles.skipBtn} onPress={onFinish}>
-        <Text style={styles.skipText}>{t('skip')}</Text>
+        <AppText style={styles.skipText}>{t('skip')}</AppText>
       </TouchableOpacity>
     </View>
   );

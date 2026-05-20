@@ -15,20 +15,21 @@ import { useCourses } from '../context/CourseContext';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 
 const SearchResultCard = ({ course, org, onPress }) => (
   <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
     <Image source={{ uri: course.thumbnail }} style={styles.thumb} />
     <View style={styles.info}>
-      <Text style={styles.title} numberOfLines={2}>{course.title}</Text>
-      {org && <Text style={styles.orgName}>{org.name}</Text>}
-      <Text style={styles.desc} numberOfLines={2}>{truncateText(course.description, 60)}</Text>
+      <AppText style={styles.title} numberOfLines={2}>{course.title}</AppText>
+      {org && <AppText style={styles.orgName}>{org.name}</AppText>}
+      <AppText style={styles.desc} numberOfLines={2}>{truncateText(course.description, 60)}</AppText>
       <View style={styles.meta}>
         <Ionicons name="book-outline" size={12} color={COLORS.textMuted} />
-        <Text style={styles.metaText}>{course.lessonIds.length} lessons</Text>
+        <AppText style={styles.metaText}>{course.lessonIds.length} lessons</AppText>
         <View style={styles.dot} />
         <Ionicons name="people-outline" size={12} color={COLORS.textMuted} />
-        <Text style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</Text>
+        <AppText style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</AppText>
       </View>
     </View>
   </TouchableOpacity>
@@ -101,14 +102,14 @@ const SearchScreen = ({ navigation }) => {
               size={13}
               color={selectedCat === item.id ? item.color : COLORS.textMuted}
             />
-            <Text
+            <AppText
               style={[
                 styles.catChipText,
                 selectedCat === item.id && { color: item.color },
               ]}
             >
               {item.label}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         )}
         showsHorizontalScrollIndicator={false}
@@ -117,9 +118,9 @@ const SearchScreen = ({ navigation }) => {
 
       {/* Results count */}
       {(query || selectedCat) && (
-        <Text style={styles.resultCount}>
+        <AppText style={styles.resultCount}>
           {results.length} {results.length === 1 ? t('courseFound') : t('coursesFound')}
-        </Text>
+        </AppText>
       )}
 
       {/* Results */}
@@ -143,14 +144,14 @@ const SearchScreen = ({ navigation }) => {
               {query || selectedCat ? (
                 <>
                   <Ionicons name="search-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.emptyTitle}>{t('noResultsTitle')}</Text>
-                  <Text style={styles.emptySub}>{t('tryDifferentKeywords')}</Text>
+                  <AppText style={styles.emptyTitle}>{t('noResultsTitle')}</AppText>
+                  <AppText style={styles.emptySub}>{t('tryDifferentKeywords')}</AppText>
                 </>
               ) : (
                 <>
                   <Ionicons name="compass-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.emptyTitle}>{t('searchForCoursesTitle')}</Text>
-                  <Text style={styles.emptySub}>{t('findLessonsOnAnyTopic')}</Text>
+                  <AppText style={styles.emptyTitle}>{t('searchForCoursesTitle')}</AppText>
+                  <AppText style={styles.emptySub}>{t('findLessonsOnAnyTopic')}</AppText>
                 </>
               )}
             </View>

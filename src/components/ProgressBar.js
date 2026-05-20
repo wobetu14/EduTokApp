@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SIZES } from '../utils/constants';
+import AppText from './AppText';
 
 const ProgressBar = ({ percent = 0, showLabel = false, height = 4, color, style }) => {
   const clampedPercent = Math.max(0, Math.min(100, percent));
@@ -9,7 +10,7 @@ const ProgressBar = ({ percent = 0, showLabel = false, height = 4, color, style 
   return (
     <View style={[styles.wrapper, style]}>
       {showLabel && (
-        <Text style={styles.label}>{clampedPercent}%</Text>
+        <AppText style={styles.label}>{clampedPercent}%</AppText>
       )}
       <View style={[styles.track, { height }]}>
         <View

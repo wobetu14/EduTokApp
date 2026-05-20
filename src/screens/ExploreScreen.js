@@ -15,6 +15,7 @@ import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 
 const OrgCard = ({ org, courseCount, onPress }) => {
   const { t } = useTranslation();
@@ -22,8 +23,8 @@ const OrgCard = ({ org, courseCount, onPress }) => {
     <TouchableOpacity style={styles.orgCard} onPress={onPress} activeOpacity={0.85}>
       <Image source={{ uri: org.logo }} style={styles.orgLogo} />
       <View style={styles.orgInfo}>
-        <Text style={styles.orgName} numberOfLines={1}>{org.name}</Text>
-        <Text style={styles.orgCourses}>{courseCount} {t('courses').toLowerCase()}</Text>
+        <AppText style={styles.orgName} numberOfLines={1}>{org.name}</AppText>
+        <AppText style={styles.orgCourses}>{courseCount} {t('courses').toLowerCase()}</AppText>
       </View>
       <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
     </TouchableOpacity>
@@ -69,7 +70,7 @@ const ExploreScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('explore')}</Text>
+        <AppText style={styles.headerTitle}>{t('explore')}</AppText>
         <View style={styles.viewToggle}>
           {['courses', 'organizations'].map((v) => (
             <TouchableOpacity
@@ -77,9 +78,9 @@ const ExploreScreen = ({ navigation }) => {
               style={[styles.toggleBtn, view === v && styles.toggleBtnActive]}
               onPress={() => setView(v)}
             >
-              <Text style={[styles.toggleText, view === v && styles.toggleTextActive]}>
+              <AppText style={[styles.toggleText, view === v && styles.toggleTextActive]}>
                 {v === 'courses' ? t('courses') : t('orgs')}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           ))}
         </View>
@@ -110,7 +111,7 @@ const ExploreScreen = ({ navigation }) => {
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
               <Ionicons name={section.icon} size={18} color={section.color} />
-              <Text style={[styles.sectionTitle, { color: section.color }]}>{section.title}</Text>
+              <AppText style={[styles.sectionTitle, { color: section.color }]}>{section.title}</AppText>
             </View>
           )}
           renderItem={({ item: courseGroup }) => (
@@ -126,13 +127,13 @@ const ExploreScreen = ({ navigation }) => {
                 >
                   <Image source={{ uri: course.thumbnail }} style={styles.hThumb} />
                   <View style={styles.hInfo}>
-                    <Text style={styles.hTitle} numberOfLines={2}>{course.title}</Text>
-                    <Text style={styles.hOrg} numberOfLines={1}>
+                    <AppText style={styles.hTitle} numberOfLines={2}>{course.title}</AppText>
+                    <AppText style={styles.hOrg} numberOfLines={1}>
                       {getOrg(course.organizationId)?.name}
-                    </Text>
+                    </AppText>
                     <View style={styles.hMeta}>
                       <Ionicons name="book-outline" size={11} color={COLORS.textMuted} />
-                      <Text style={styles.hMetaText}>{course.lessonIds.length} {t('lessons').toLowerCase()}</Text>
+                      <AppText style={styles.hMetaText}>{course.lessonIds.length} {t('lessons').toLowerCase()}</AppText>
                     </View>
                   </View>
                 </TouchableOpacity>

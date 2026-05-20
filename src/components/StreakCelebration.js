@@ -3,6 +3,7 @@ import { Animated, Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View }
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../utils/constants';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from './AppText';
 
 const { width: W, height: H } = Dimensions.get('window');
 const PARTICLE_COUNT = 24;
@@ -62,10 +63,10 @@ const StreakCelebration = ({ visible, streak, onFinish }) => {
         {/* Card */}
         <View style={styles.card}>
           <Ionicons name="flame" size={56} color={COLORS.primary} />
-          <Text style={styles.title}>{streak}-{t('dayStreakLabel')}!</Text>
-          <Text style={styles.sub}>{t('streakCelebMsg')}</Text>
+          <AppText style={styles.title}>{streak}-{t('dayStreakLabel')}!</AppText>
+          <AppText style={styles.sub}>{t('streakCelebMsg')}</AppText>
           <TouchableOpacity style={styles.btn} onPress={onFinish}>
-            <Text style={styles.btnText}>{t('keepGoing')}</Text>
+            <AppText style={styles.btnText}>{t('keepGoing')}</AppText>
           </TouchableOpacity>
         </View>
       </View>

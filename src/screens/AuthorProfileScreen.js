@@ -15,6 +15,7 @@ import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
 import { formatLargeNumber } from '../utils/helpers';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 
 const AuthorProfileScreen = ({ route, navigation }) => {
   const { authorId } = route.params;
@@ -48,15 +49,15 @@ const AuthorProfileScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         <View style={styles.heroContent}>
           <Image source={{ uri: author.avatar }} style={styles.avatar} />
-          <Text style={styles.name}>{author.name}</Text>
-          <Text style={styles.roleLabel}>{t('instructor')}</Text>
+          <AppText style={styles.name}>{author.name}</AppText>
+          <AppText style={styles.roleLabel}>{t('instructor')}</AppText>
           {org && (
             <TouchableOpacity
               style={styles.orgRow}
               onPress={() => navigation.navigate('OrganizationProfile', { orgId: org.id })}
             >
               <Image source={{ uri: org.logo }} style={styles.orgLogo} />
-              <Text style={styles.orgName}>{org.name}</Text>
+              <AppText style={styles.orgName}>{org.name}</AppText>
               <Ionicons name="chevron-forward" size={12} color={COLORS.secondary} />
             </TouchableOpacity>
           )}
@@ -64,7 +65,7 @@ const AuthorProfileScreen = ({ route, navigation }) => {
             <View style={styles.tagsRow}>
               {author.expertise.map((tag) => (
                 <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
+                  <AppText style={styles.tagText}>{tag}</AppText>
                 </View>
               ))}
             </View>
@@ -81,23 +82,23 @@ const AuthorProfileScreen = ({ route, navigation }) => {
         ].map((s) => (
           <View key={s.label} style={styles.stat}>
             <Ionicons name={s.icon} size={20} color={COLORS.secondary} />
-            <Text style={styles.statValue}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
+            <AppText style={styles.statValue}>{s.value}</AppText>
+            <AppText style={styles.statLabel}>{s.label}</AppText>
           </View>
         ))}
       </View>
 
       {/* Bio */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('about')}</Text>
-        <Text style={styles.bio}>{author.bio}</Text>
+        <AppText style={styles.sectionTitle}>{t('about')}</AppText>
+        <AppText style={styles.bio}>{author.bio}</AppText>
       </View>
 
       {/* Courses */}
       {authorCourses.length > 0 && (
         <>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{authorCourses.length} {t('courses')}</Text>
+            <AppText style={styles.sectionTitle}>{authorCourses.length} {t('courses')}</AppText>
           </View>
           {authorCourses.map((course) => (
             <CourseCard

@@ -17,6 +17,7 @@ import { formatTimeAgo } from '../utils/helpers';
 import * as api from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from './AppText';
 
 const ReplyItem = ({ item }) => (
   <View style={styles.replyRow}>
@@ -26,10 +27,10 @@ const ReplyItem = ({ item }) => (
     />
     <View style={styles.replyBubble}>
       <View style={styles.nameRow}>
-        <Text style={styles.username}>@{item.username}</Text>
-        <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
+        <AppText style={styles.username}>@{item.username}</AppText>
+        <AppText style={styles.time}>{formatTimeAgo(item.createdAt)}</AppText>
       </View>
-      <Text style={styles.commentText}>{item.text}</Text>
+      <AppText style={styles.commentText}>{item.text}</AppText>
     </View>
   </View>
 );
@@ -47,13 +48,13 @@ const CommentItem = ({ item, replies, onReply }) => {
         />
         <View style={styles.bubble}>
           <View style={styles.nameRow}>
-            <Text style={styles.username}>@{item.username}</Text>
-            <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
+            <AppText style={styles.username}>@{item.username}</AppText>
+            <AppText style={styles.time}>{formatTimeAgo(item.createdAt)}</AppText>
           </View>
-          <Text style={styles.commentText}>{item.text}</Text>
+          <AppText style={styles.commentText}>{item.text}</AppText>
           <TouchableOpacity onPress={() => onReply(item.id, item.username)} style={styles.replyBtn}>
             <Ionicons name="return-down-forward-outline" size={13} color={COLORS.textMuted} />
-            <Text style={styles.replyBtnText}>{t('reply')}</Text>
+            <AppText style={styles.replyBtnText}>{t('reply')}</AppText>
           </TouchableOpacity>
         </View>
       </View>
@@ -63,9 +64,9 @@ const CommentItem = ({ item, replies, onReply }) => {
           <View style={styles.replyAccent} />
           <View style={{ flex: 1 }}>
             <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.toggleReplies}>
-              <Text style={styles.toggleRepliesText}>
+              <AppText style={styles.toggleRepliesText}>
                 {expanded ? t('hideReplies') : `${t('showReplies')} (${replies.length})`}
-              </Text>
+              </AppText>
             </TouchableOpacity>
             {showReplies.map((r) => <ReplyItem key={r.id} item={r} />)}
           </View>
@@ -132,9 +133,9 @@ const CommentThread = ({ lessonId, onClose }) => {
       style={styles.container}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
+        <AppText style={styles.headerTitle}>
           {topCount} {topCount === 1 ? t('comment') : t('comments')}
-        </Text>
+        </AppText>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={24} color="#444" />
         </TouchableOpacity>
@@ -154,14 +155,14 @@ const CommentThread = ({ lessonId, onClose }) => {
           )}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>{t('noCommentsYet')}</Text>
+            <AppText style={styles.empty}>{t('noCommentsYet')}</AppText>
           }
         />
       )}
 
       {replyingTo && (
         <View style={styles.replyingBanner}>
-          <Text style={styles.replyingText}>{t('replyingTo')} @{replyingTo.username}</Text>
+          <AppText style={styles.replyingText}>{t('replyingTo')} @{replyingTo.username}</AppText>
           <TouchableOpacity onPress={cancelReply}>
             <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>

@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES } from '../utils/constants';
 import { useTranslation } from '../utils/useTranslation';
 import { shuffle } from '../utils/helpers';
+import AppText from './AppText';
 
 const TrueFalseQuestion = ({ question, onAnswer, answered, selected }) => {
   const { t } = useTranslation();
@@ -36,7 +37,7 @@ const TrueFalseQuestion = ({ question, onAnswer, answered, selected }) => {
               onPress={() => !answered && onAnswer(val)}
               activeOpacity={0.8}
             >
-              <Text style={styles.tfBtnText}>{val ? t('trueText') : t('falseText')}</Text>
+              <AppText style={styles.tfBtnText}>{val ? t('trueText') : t('falseText')}</AppText>
               {answered && (isCorrect ? (
                 <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
               ) : isWrong ? (
@@ -69,11 +70,11 @@ const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
           activeOpacity={0.8}
         >
           <View style={styles.mcLetter}>
-            <Text style={styles.mcLetterText}>
+            <AppText style={styles.mcLetterText}>
               {String.fromCharCode(65 + idx)}
-            </Text>
+            </AppText>
           </View>
-          <Text style={styles.mcText}>{opt}</Text>
+          <AppText style={styles.mcText}>{opt}</AppText>
           {answered && isCorrect && (
             <Ionicons name="checkmark-circle" size={20} color={COLORS.success} style={styles.mcIcon} />
           )}
@@ -122,7 +123,7 @@ const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
 
   return (
     <View style={styles.matchContainer}>
-      <Text style={styles.matchHint}>{t('selectImageFirst')}</Text>
+      <AppText style={styles.matchHint}>{t('selectImageFirst')}</AppText>
       <View style={styles.matchRow}>
         {/* Images column */}
         <View style={styles.matchCol}>
@@ -153,7 +154,7 @@ const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
                   </View>
                 )}
                 {selections[p.id] && (
-                  <Text style={styles.matchAssigned} numberOfLines={1}>{selections[p.id]}</Text>
+                  <AppText style={styles.matchAssigned} numberOfLines={1}>{selections[p.id]}</AppText>
                 )}
               </TouchableOpacity>
             );
@@ -172,7 +173,7 @@ const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
                 disabled={checked}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.matchLabelText, isUsed && styles.matchLabelUsedText]} numberOfLines={2}>{label}</Text>
+                <AppText style={[styles.matchLabelText, isUsed && styles.matchLabelUsedText]} numberOfLines={2}>{label}</AppText>
               </TouchableOpacity>
             );
           })}
@@ -181,7 +182,7 @@ const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
 
       {!checked && isComplete && (
         <TouchableOpacity style={styles.nextBtn} onPress={handleCheck}>
-          <Text style={styles.nextBtnText}>{t('checkMatches')}</Text>
+          <AppText style={styles.nextBtnText}>{t('checkMatches')}</AppText>
           <Ionicons name="checkmark-done" size={18} color="#fff" />
         </TouchableOpacity>
       )}
@@ -274,7 +275,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
           <View style={styles.header}>
             <View style={styles.quizBadge}>
               <Ionicons name="help-circle" size={16} color={COLORS.primary} />
-              <Text style={styles.quizBadgeText}>{t('quizTime')}</Text>
+              <AppText style={styles.quizBadgeText}>{t('quizTime')}</AppText>
             </View>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={22} color={COLORS.textSecondary} />
@@ -291,26 +292,26 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                   color={passed ? COLORS.success : COLORS.error}
                 />
               </View>
-              <Text style={styles.resultTitle}>
+              <AppText style={styles.resultTitle}>
                 {passed ? `🎉 ${t('excellent')}` : t('notQuite')}
-              </Text>
-              <Text style={styles.resultSub}>
+              </AppText>
+              <AppText style={styles.resultSub}>
                 {passed ? t('quizPassedMsg') : t('quizFailedMsg')}
-              </Text>
+              </AppText>
               <View style={styles.scoreBox}>
-                <Text style={styles.scoreNum}>{score}/{total}</Text>
-                <Text style={styles.scoreLabel}>{t('correctLabel')}</Text>
+                <AppText style={styles.scoreNum}>{score}/{total}</AppText>
+                <AppText style={styles.scoreLabel}>{t('correctLabel')}</AppText>
               </View>
               <View style={styles.resultBtns}>
                 {!passed && (
                   <TouchableOpacity style={styles.retryBtn} onPress={reset}>
                     <Ionicons name="refresh" size={18} color={COLORS.text} />
-                    <Text style={styles.retryBtnText}>{t('retryQuiz')}</Text>
+                    <AppText style={styles.retryBtnText}>{t('retryQuiz')}</AppText>
                   </TouchableOpacity>
                 )}
                 {passed && (
                   <TouchableOpacity style={styles.nextBtn} onPress={handleContinue}>
-                    <Text style={styles.nextBtnText}>{t('continue')}</Text>
+                    <AppText style={styles.nextBtnText}>{t('continue')}</AppText>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </TouchableOpacity>
                 )}
@@ -333,10 +334,10 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
               </View>
 
               {/* Question */}
-              <Text style={styles.qNum}>
+              <AppText style={styles.qNum}>
                 {t('question')} {currentQ + 1} {t('of')} {total}
-              </Text>
-              <Text style={styles.qText}>{question.text}</Text>
+              </AppText>
+              <AppText style={styles.qText}>{question.text}</AppText>
 
               {/* Answer options */}
               {question.type === 'truefalse' && (
@@ -374,20 +375,20 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                     size={20}
                     color={selected === question.correctAnswer ? COLORS.success : COLORS.error}
                   />
-                  <Text style={[
+                  <AppText style={[
                     styles.feedbackText,
                     { color: selected === question.correctAnswer ? COLORS.success : COLORS.error },
                   ]}>
                     {selected === question.correctAnswer ? t('correctFeedback') : t('incorrectFeedback')}
-                  </Text>
+                  </AppText>
                 </View>
               )}
 
               {answered && (
                 <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-                  <Text style={styles.nextBtnText}>
+                  <AppText style={styles.nextBtnText}>
                     {currentQ + 1 >= total ? t('seeResults') : t('nextQuestion')}
-                  </Text>
+                  </AppText>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </TouchableOpacity>
               )}

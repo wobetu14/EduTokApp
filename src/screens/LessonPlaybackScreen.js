@@ -33,6 +33,7 @@ import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
+import AppText from '../components/AppText';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -44,8 +45,8 @@ const TextContent = ({ lesson }) => (
     contentContainerStyle={styles.textContent}
     showsVerticalScrollIndicator={false}
   >
-    <Text style={styles.lessonTitle}>{lesson.title}</Text>
-    <Text style={styles.bodyText}>{lesson.content.body}</Text>
+    <AppText style={styles.lessonTitle}>{lesson.title}</AppText>
+    <AppText style={styles.bodyText}>{lesson.content.body}</AppText>
   </ScrollView>
 );
 
@@ -70,7 +71,7 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
             <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             {item.caption ? (
               <View style={styles.captionRow}>
-                <Text style={styles.captionText}>{item.caption}</Text>
+                <AppText style={styles.captionText}>{item.caption}</AppText>
               </View>
             ) : null}
           </View>
@@ -110,7 +111,7 @@ const LessonSlide = ({
     switch (lesson.type) {
       case 'video': return <VideoContent key={lesson.id} lesson={lesson} active={active} onProgress={onVideoProgress} />;
       case 'image': return <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideHeight} />;
-      default:      return <TextContent key={lesson.id} lesson={lesson} />;
+      default:      return <AppTextContent key={lesson.id} lesson={lesson} />;
     }
   };
 
@@ -134,18 +135,18 @@ const LessonSlide = ({
 
       {/* Bottom-left info */}
       <View style={[styles.bottomLeft, { bottom: insetBottom + 24 }]}>
-        <Text style={styles.courseTitle} numberOfLines={1}>{courseTitle}</Text>
-        <Text style={styles.lessonInfo}>{t('lesson')} {lessonIndex + 1} {t('of')} {totalLessons}</Text>
+        <AppText style={styles.courseTitle} numberOfLines={1}>{courseTitle}</AppText>
+        <AppText style={styles.lessonInfo}>{t('lesson')} {lessonIndex + 1} {t('of')} {totalLessons}</AppText>
         {lesson.type !== 'video' && (
           <View style={styles.metaRow}>
             <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.65)" />
-            <Text style={styles.metaText}>{formatDuration(lesson.duration)} {t('read')}</Text>
+            <AppText style={styles.metaText}>{formatDuration(lesson.duration)} {t('read')}</AppText>
           </View>
         )}
         {lesson.hasQuiz && (
           <View style={styles.metaRow}>
             <Ionicons name="help-circle-outline" size={12} color={COLORS.secondary} />
-            <Text style={[styles.metaText, { color: COLORS.secondary }]}>{t('quizBeforeNext')}</Text>
+            <AppText style={[styles.metaText, { color: COLORS.secondary }]}>{t('quizBeforeNext')}</AppText>
           </View>
         )}
         <View style={styles.progressDots}>
@@ -397,12 +398,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
               activeOpacity={0.7}
             >
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.7)" />
-              <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextLesson')}</Text>
+              <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextLesson')}</AppText>
             </TouchableOpacity>
           ) : (
             <View style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}>
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
-              <Text style={styles.swipeHintText}>{t('swipeHint')}</Text>
+              <AppText style={styles.swipeHintText}>{t('swipeHint')}</AppText>
             </View>
           )
         )}

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, LESSON_TYPES } from '../utils/constants';
 import { formatDuration } from '../utils/helpers';
+import AppText from './AppText';
 
 const LessonCard = ({ lesson, index, isCompleted, onPress, style }) => {
   const typeInfo = LESSON_TYPES[lesson.type] || LESSON_TYPES.text;
@@ -22,19 +23,19 @@ const LessonCard = ({ lesson, index, isCompleted, onPress, style }) => {
       )}
       <View style={styles.typeTag}>
         <Ionicons name={typeInfo.icon} size={11} color="#fff" />
-        <Text style={styles.typeText}>{typeInfo.label}</Text>
+        <AppText style={styles.typeText}>{typeInfo.label}</AppText>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.lessonNum}>#{index + 1}</Text>
-        <Text style={styles.title} numberOfLines={2}>{lesson.title}</Text>
+        <AppText style={styles.lessonNum}>#{index + 1}</AppText>
+        <AppText style={styles.title} numberOfLines={2}>{lesson.title}</AppText>
         <View style={styles.meta}>
           <Ionicons name="time-outline" size={11} color={COLORS.textSecondary} />
-          <Text style={styles.duration}>{formatDuration(lesson.duration)}</Text>
+          <AppText style={styles.duration}>{formatDuration(lesson.duration)}</AppText>
           {lesson.hasQuiz && (
             <>
               <View style={styles.dot} />
               <Ionicons name="help-circle-outline" size={11} color={COLORS.secondary} />
-              <Text style={[styles.duration, { color: COLORS.secondary }]}>Quiz</Text>
+              <AppText style={[styles.duration, { color: COLORS.secondary }]}>Quiz</AppText>
             </>
           )}
         </View>

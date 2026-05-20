@@ -3,6 +3,7 @@ import { Animated, Text, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppText from './AppText';
 
 const Toast = ({ message, icon = 'checkmark-circle', visible, onHide }) => {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -44,7 +45,7 @@ const Toast = ({ message, icon = 'checkmark-circle', visible, onHide }) => {
     >
       <View style={styles.pill}>
         <Ionicons name={icon} size={18} color={COLORS.success} />
-        <Text style={styles.text}>{message}</Text>
+        <AppText style={styles.text}>{message}</AppText>
       </View>
     </Animated.View>
   );

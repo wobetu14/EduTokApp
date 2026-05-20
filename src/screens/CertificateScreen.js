@@ -17,6 +17,7 @@ import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { buildCertificateHtml } from '../utils/certificateTemplate';
 import { useTranslation } from '../utils/useTranslation';
 import { t as _t } from '../utils/i18n';
+import AppText from '../components/AppText';
 
 const CATEGORY_PRIMARIES = {
   engineering: '#1B4332',
@@ -49,29 +50,29 @@ const CertificatePreview = ({ cert }) => {
       {/* Header band */}
       <LinearGradient colors={[primary, primary + 'dd']} style={styles.certHeader}>
         <View style={styles.certHeaderLogo}>
-          <Text style={styles.certHeaderLogoText}>E</Text>
+          <AppText style={styles.certHeaderLogoText}>E</AppText>
         </View>
         <View style={styles.certHeaderText}>
-          <Text style={styles.certPlatformName}>EduTok</Text>
-          <Text style={styles.certPlatformSub}>Micro-Learning Platform</Text>
+          <AppText style={styles.certPlatformName}>EduTok</AppText>
+          <AppText style={styles.certPlatformSub}>Micro-Learning Platform</AppText>
         </View>
         {catInfo && (
           <View style={[styles.certCategoryBadge, { borderColor: 'rgba(255,255,255,0.3)' }]}>
-            <Text style={styles.certCategoryText}>{cert.category.toUpperCase()}</Text>
+            <AppText style={styles.certCategoryText}>{cert.category.toUpperCase()}</AppText>
           </View>
         )}
       </LinearGradient>
 
       {/* Body */}
       <View style={styles.certBody}>
-        <Text style={styles.certLabel}>Certificate of Completion</Text>
-        <Text style={styles.certTypeText}>This is to certify that</Text>
-        <Text style={[styles.certStudentName, { color: primary }]}>{cert.studentName}</Text>
-        <Text style={styles.certCompletedText}>has successfully completed</Text>
-        <Text style={[styles.certCourseName, { color: primary }]}>{cert.courseName}</Text>
-        <Text style={styles.certOfferedBy}>
+        <AppText style={styles.certLabel}>Certificate of Completion</AppText>
+        <AppText style={styles.certTypeText}>This is to certify that</AppText>
+        <AppText style={[styles.certStudentName, { color: primary }]}>{cert.studentName}</AppText>
+        <AppText style={styles.certCompletedText}>has successfully completed</AppText>
+        <AppText style={[styles.certCourseName, { color: primary }]}>{cert.courseName}</AppText>
+        <AppText style={styles.certOfferedBy}>
           offered by {cert.organizationName}  ·  {cert.difficulty || 'Course'} Level
-        </Text>
+        </AppText>
 
         {/* Gold divider */}
         <View style={styles.divider}>
@@ -84,30 +85,30 @@ const CertificatePreview = ({ cert }) => {
         <View style={styles.certFooter}>
           <View style={styles.sigBlock}>
             <View style={styles.sigLine} />
-            <Text style={styles.sigName}>{cert.authorName}</Text>
-            <Text style={styles.sigTitle}>Instructor</Text>
+            <AppText style={styles.sigName}>{cert.authorName}</AppText>
+            <AppText style={styles.sigTitle}>Instructor</AppText>
           </View>
 
           {/* Seal */}
           <View style={[styles.seal, { backgroundColor: primary, borderColor: GOLD }]}>
             <View style={styles.sealRing} />
             <Ionicons name="star" size={22} color={GOLD} />
-            <Text style={styles.sealText}>Verified{'\n'}Completion</Text>
+            <AppText style={styles.sealText}>Verified{'\n'}Completion</AppText>
           </View>
 
           <View style={styles.sigBlock}>
             <View style={styles.sigLine} />
-            <Text style={styles.sigName}>{dateStr}</Text>
-            <Text style={styles.sigTitle}>Date Completed</Text>
+            <AppText style={styles.sigName}>{dateStr}</AppText>
+            <AppText style={styles.sigTitle}>Date Completed</AppText>
           </View>
         </View>
       </View>
 
       {/* Certificate ID strip */}
       <View style={[styles.certIdStrip, { backgroundColor: '#f8f5ee' }]}>
-        <Text style={styles.certIdLabel}>Certificate ID</Text>
-        <Text style={styles.certIdValue}>EDUTOK-{certIdShort}</Text>
-        <Text style={styles.certIdLabel}>edutok.app/verify</Text>
+        <AppText style={styles.certIdLabel}>Certificate ID</AppText>
+        <AppText style={styles.certIdValue}>EDUTOK-{certIdShort}</AppText>
+        <AppText style={styles.certIdLabel}>edutok.app/verify</AppText>
       </View>
     </View>
   );
@@ -162,8 +163,8 @@ const CertificateScreen = ({ route, navigation }) => {
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.topBarContent}>
-          <Text style={styles.topBarTitle}>{t('yourCertificate')}</Text>
-          <Text style={styles.topBarSub}>{certificate.courseName}</Text>
+          <AppText style={styles.topBarTitle}>{t('yourCertificate')}</AppText>
+          <AppText style={styles.topBarSub}>{certificate.courseName}</AppText>
         </View>
       </LinearGradient>
 
@@ -183,8 +184,8 @@ const CertificateScreen = ({ route, navigation }) => {
           ].map((item) => (
             <View key={item.label} style={styles.infoCard}>
               <Ionicons name={item.icon} size={18} color={COLORS.secondary} />
-              <Text style={styles.infoLabel}>{item.label}</Text>
-              <Text style={styles.infoValue} numberOfLines={2}>{item.value}</Text>
+              <AppText style={styles.infoLabel}>{item.label}</AppText>
+              <AppText style={styles.infoValue} numberOfLines={2}>{item.value}</AppText>
             </View>
           ))}
         </View>
@@ -192,9 +193,9 @@ const CertificateScreen = ({ route, navigation }) => {
         {/* Completion notice */}
         <View style={styles.notice}>
           <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-          <Text style={styles.noticeText}>
+          <AppText style={styles.noticeText}>
             {certificate.courseName} — {t('allLessonsCompleted')}
-          </Text>
+          </AppText>
         </View>
       </ScrollView>
 
@@ -211,9 +212,9 @@ const CertificateScreen = ({ route, navigation }) => {
           ) : (
             <Ionicons name={Platform.OS === 'web' ? 'print-outline' : 'share-outline'} size={20} color="#fff" />
           )}
-          <Text style={styles.downloadBtnText}>
+          <AppText style={styles.downloadBtnText}>
             {isGenerating ? t('generating') : Platform.OS === 'web' ? t('printSavePdf') : t('downloadSharePdf')}
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </View>
     </View>

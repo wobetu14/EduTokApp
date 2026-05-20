@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, DIFFICULTY } from '../utils/constants';
 import { formatLargeNumber, truncateText } from '../utils/helpers';
+import AppText from './AppText';
 
 const CourseCard = ({ course, organization, onPress, style }) => {
   const diff = DIFFICULTY[course.difficulty] || DIFFICULTY.Beginner;
@@ -11,31 +12,31 @@ const CourseCard = ({ course, organization, onPress, style }) => {
     <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.85}>
       <Image source={{ uri: course.thumbnail }} style={styles.thumbnail} />
       <View style={styles.difficultyBadge}>
-        <Text style={[styles.difficultyText, { color: diff.color }]}>{diff.label}</Text>
+        <AppText style={[styles.difficultyText, { color: diff.color }]}>{diff.label}</AppText>
       </View>
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{course.title}</Text>
+        <AppText style={styles.title} numberOfLines={2}>{course.title}</AppText>
         {organization && (
           <View style={styles.orgRow}>
             <Ionicons name="business" size={11} color={COLORS.textMuted} />
-            <Text style={styles.orgName} numberOfLines={1}>{organization.name}</Text>
+            <AppText style={styles.orgName} numberOfLines={1}>{organization.name}</AppText>
           </View>
         )}
-        <Text style={styles.desc} numberOfLines={2}>
+        <AppText style={styles.desc} numberOfLines={2}>
           {truncateText(course.description, 70)}
-        </Text>
+        </AppText>
         <View style={styles.meta}>
           <View style={styles.metaItem}>
             <Ionicons name="book-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.metaText}>{course.lessonIds.length} lessons</Text>
+            <AppText style={styles.metaText}>{course.lessonIds.length} lessons</AppText>
           </View>
           <View style={styles.metaItem}>
             <Ionicons name="heart-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.metaText}>{formatLargeNumber(course.likesCount)}</Text>
+            <AppText style={styles.metaText}>{formatLargeNumber(course.likesCount)}</AppText>
           </View>
           <View style={styles.metaItem}>
             <Ionicons name="people-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</Text>
+            <AppText style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</AppText>
           </View>
         </View>
       </View>

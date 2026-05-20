@@ -22,6 +22,7 @@ import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { useToast } from '../context/ToastContext';
 import { scheduleEnrollmentNotification } from '../services/notificationService';
+import AppText from '../components/AppText';
 
 const CourseProfileScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
@@ -125,26 +126,26 @@ const CourseProfileScreen = ({ route, navigation }) => {
             {catInfo && (
               <View style={[styles.catBadge, { backgroundColor: catInfo.color + '33' }]}>
                 <Ionicons name={catInfo.icon} size={12} color={catInfo.color} />
-                <Text style={[styles.catBadgeText, { color: catInfo.color }]}>{catInfo.label}</Text>
+                <AppText style={[styles.catBadgeText, { color: catInfo.color }]}>{catInfo.label}</AppText>
               </View>
             )}
             {course.visibility && course.visibility !== 'public' && (
               <View style={[styles.visBadge, { backgroundColor: visInfo.color + '22', borderColor: visInfo.color + '66' }]}>
                 <Ionicons name={visInfo.icon} size={11} color={visInfo.color} />
-                <Text style={[styles.visBadgeText, { color: visInfo.color }]}>
+                <AppText style={[styles.visBadgeText, { color: visInfo.color }]}>
                   {t(`course${course.visibility.charAt(0).toUpperCase() + course.visibility.slice(1)}`)}
-                </Text>
+                </AppText>
               </View>
             )}
           </View>
-          <Text style={styles.heroTitle}>{course.title}</Text>
+          <AppText style={styles.heroTitle}>{course.title}</AppText>
           {org && (
             <TouchableOpacity
               style={styles.orgRow}
               onPress={() => navigation.navigate('OrganizationProfile', { orgId: org.id })}
             >
               <Image source={{ uri: org.logo }} style={styles.orgLogo} />
-              <Text style={styles.orgName}>{org.name}</Text>
+              <AppText style={styles.orgName}>{org.name}</AppText>
               <Ionicons name="chevron-forward" size={14} color={COLORS.secondary} />
             </TouchableOpacity>
           )}
@@ -161,7 +162,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
         ].map((s, i) => (
           <View key={i} style={styles.stat}>
             <Ionicons name={s.icon} size={16} color={s.color} />
-            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
+            <AppText style={[styles.statValue, { color: s.color }]}>{s.value}</AppText>
           </View>
         ))}
       </View>
@@ -170,19 +171,19 @@ const CourseProfileScreen = ({ route, navigation }) => {
       {enrolled ? (
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>{t('yourProgress')}</Text>
-            <Text style={styles.progressPct}>{progress}%</Text>
+            <AppText style={styles.progressLabel}>{t('yourProgress')}</AppText>
+            <AppText style={styles.progressPct}>{progress}%</AppText>
           </View>
           <ProgressBar percent={progress} height={6} />
           {progress === 100 && (
             <View style={styles.completedRow}>
               <View style={styles.completedBadge}>
                 <Ionicons name="trophy" size={16} color={COLORS.success} />
-                <Text style={styles.completedText}>{t('courseCompleted')}</Text>
+                <AppText style={styles.completedText}>{t('courseCompleted')}</AppText>
               </View>
               <TouchableOpacity style={styles.certBtn} onPress={handleViewCertificate} activeOpacity={0.85}>
                 <Ionicons name="ribbon" size={15} color="#fff" />
-                <Text style={styles.certBtnText}>{t('viewCertificate')}</Text>
+                <AppText style={styles.certBtnText}>{t('viewCertificate')}</AppText>
               </TouchableOpacity>
             </View>
           )}
@@ -190,14 +191,14 @@ const CourseProfileScreen = ({ route, navigation }) => {
       ) : (
         <TouchableOpacity style={styles.enrollBtn} onPress={handleEnroll} activeOpacity={0.85}>
           <Ionicons name="add-circle" size={22} color="#fff" />
-          <Text style={styles.enrollBtnText}>{t('enrollInCourse')}</Text>
+          <AppText style={styles.enrollBtnText}>{t('enrollInCourse')}</AppText>
         </TouchableOpacity>
       )}
 
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('about')}</Text>
-        <Text style={styles.description}>{course.description}</Text>
+        <AppText style={styles.sectionTitle}>{t('about')}</AppText>
+        <AppText style={styles.description}>{course.description}</AppText>
       </View>
 
       {/* Tags */}
@@ -205,7 +206,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
         <View style={styles.tagsRow}>
           {course.tags.map((tag) => (
             <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
+              <AppText style={styles.tagText}>#{tag}</AppText>
             </View>
           ))}
         </View>
@@ -213,7 +214,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
 
       {/* Lessons grid */}
       <View style={[styles.section, { paddingHorizontal: hPad }]}>
-        <Text style={styles.sectionTitle}>{lessons.length} {t('lessons')}</Text>
+        <AppText style={styles.sectionTitle}>{lessons.length} {t('lessons')}</AppText>
       </View>
       <View style={[styles.lessonGrid, { paddingHorizontal: hPad }]}>
         {lessons.map((lesson, index) => (

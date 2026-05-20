@@ -18,6 +18,7 @@ import { isValidUsername, isValidPhone, passwordStrength } from '../utils/helper
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 
 const InputField = ({ icon, placeholder, value, onChangeText, secureEntry, keyboardType, error, rightElement }) => {
   const [secure, setSecure] = useState(secureEntry);
@@ -43,7 +44,7 @@ const InputField = ({ icon, placeholder, value, onChangeText, secureEntry, keybo
         )}
         {rightElement}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <AppText style={styles.errorText}>{error}</AppText> : null}
     </View>
   );
 };
@@ -61,7 +62,7 @@ const StrengthBar = ({ password }) => {
           />
         ))}
       </View>
-      <Text style={[styles.strengthLabel, { color: s.color }]}>{s.label}</Text>
+      <AppText style={[styles.strengthLabel, { color: s.color }]}>{s.label}</AppText>
     </View>
   );
 };
@@ -143,8 +144,8 @@ const AuthScreen = () => {
             <View style={styles.logoIcon}>
               <Ionicons name="play-circle" size={40} color={COLORS.primary} />
             </View>
-            <Text style={styles.logoText}>EduTok</Text>
-            <Text style={styles.logoSub}>{t('tagline')}</Text>
+            <AppText style={styles.logoText}>EduTok</AppText>
+            <AppText style={styles.logoSub}>{t('tagline')}</AppText>
           </View>
 
           {/* Mode toggle */}
@@ -153,17 +154,17 @@ const AuthScreen = () => {
               style={[styles.modeBtn, !isSignUp && styles.modeBtnActive]}
               onPress={() => mode !== 'signin' && toggleMode()}
             >
-              <Text style={[styles.modeBtnText, !isSignUp && styles.modeBtnTextActive]}>
+              <AppText style={[styles.modeBtnText, !isSignUp && styles.modeBtnTextActive]}>
                 {t('signIn')}
-              </Text>
+              </AppText>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modeBtn, isSignUp && styles.modeBtnActive]}
               onPress={() => mode !== 'signup' && toggleMode()}
             >
-              <Text style={[styles.modeBtnText, isSignUp && styles.modeBtnTextActive]}>
+              <AppText style={[styles.modeBtnText, isSignUp && styles.modeBtnTextActive]}>
                 {t('signUp')}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           </View>
 
@@ -207,7 +208,7 @@ const AuthScreen = () => {
 
             {!isSignUp && (
               <TouchableOpacity style={styles.forgotBtn}>
-                <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
+                <AppText style={styles.forgotText}>{t('forgotPassword')}</AppText>
               </TouchableOpacity>
             )}
 
@@ -220,20 +221,20 @@ const AuthScreen = () => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitBtnText}>
+                <AppText style={styles.submitBtnText}>
                   {isSignUp ? t('createAccount') : t('signIn')}
-                </Text>
+                </AppText>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Switch link */}
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>
+            <AppText style={styles.switchText}>
               {isSignUp ? t('haveAccount') : t('noAccount')}
-            </Text>
+            </AppText>
             <TouchableOpacity onPress={toggleMode}>
-              <Text style={styles.switchLink}>{isSignUp ? t('signIn') : t('signUp')}</Text>
+              <AppText style={styles.switchLink}>{isSignUp ? t('signIn') : t('signUp')}</AppText>
             </TouchableOpacity>
           </View>
           </View>

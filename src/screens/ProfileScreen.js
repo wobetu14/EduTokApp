@@ -23,17 +23,18 @@ import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { scheduleDailyReminder, cancelDailyReminder, requestPermissions } from '../services/notificationService';
 import { useA11y } from '../context/AccessibilityContext';
+import AppText from '../components/AppText';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
     <Ionicons name={icon} size={22} color={color || COLORS.secondary} />
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
+    <AppText style={styles.statValue}>{value}</AppText>
+    <AppText style={styles.statLabel}>{label}</AppText>
   </View>
 );
 
 const SectionTitle = ({ children }) => (
-  <Text style={styles.sectionTitle}>{children}</Text>
+  <AppText style={styles.sectionTitle}>{children}</AppText>
 );
 
 const ProfileScreen = ({ navigation }) => {
@@ -153,9 +154,9 @@ const ProfileScreen = ({ navigation }) => {
             style={styles.avatar}
           />
           <View style={styles.profileInfo}>
-            <Text style={styles.fullName}>{user?.fullName}</Text>
-            <Text style={styles.username}>@{user?.username}</Text>
-            {user?.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
+            <AppText style={styles.fullName}>{user?.fullName}</AppText>
+            <AppText style={styles.username}>@{user?.username}</AppText>
+            {user?.bio ? <AppText style={styles.bio}>{user.bio}</AppText> : null}
           </View>
           <TouchableOpacity
             style={styles.editBtn}
@@ -178,7 +179,7 @@ const ProfileScreen = ({ navigation }) => {
       {!user?.phoneVerified && (
         <TouchableOpacity style={[styles.verifyBanner, { marginHorizontal: hPad }]}>
           <Ionicons name="warning" size={16} color={COLORS.warning} />
-          <Text style={styles.verifyText}>{t('phoneNotVerified')}</Text>
+          <AppText style={styles.verifyText}>{t('phoneNotVerified')}</AppText>
           <Ionicons name="chevron-forward" size={14} color={COLORS.warning} />
         </TouchableOpacity>
       )}
@@ -199,7 +200,7 @@ const ProfileScreen = ({ navigation }) => {
               style={[styles.tab, activeTab === key && styles.tabActive]}
               onPress={() => setActiveTab(key)}
             >
-              <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
+              <AppText style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</AppText>
             </TouchableOpacity>
           ))}
         </View>
@@ -209,7 +210,7 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'progress' && (
         <View style={styles.section}>
           {enrolledCourses.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noEnrolledCourses')}</Text>
+            <AppText style={styles.emptyText}>{t('noEnrolledCourses')}</AppText>
           ) : (
             enrolledCourses.map((course) => {
               const p = getCourseProgress(course.id);
@@ -222,13 +223,13 @@ const ProfileScreen = ({ navigation }) => {
                 >
                   <Image source={{ uri: course.thumbnail }} style={styles.courseThumb} />
                   <View style={styles.courseInfo}>
-                    <Text style={styles.courseTitle} numberOfLines={2}>{course.title}</Text>
+                    <AppText style={styles.courseTitle} numberOfLines={2}>{course.title}</AppText>
                     <View style={styles.courseStatus}>
                       {p === 100 ? (
                         <View style={styles.completedRow}>
                           <View style={styles.completedBadge}>
                             <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-                            <Text style={styles.completedText}>{t('completedStatus')}</Text>
+                            <AppText style={styles.completedText}>{t('completedStatus')}</AppText>
                           </View>
                           <TouchableOpacity
                             style={styles.certIconBtn}
@@ -239,9 +240,9 @@ const ProfileScreen = ({ navigation }) => {
                           </TouchableOpacity>
                         </View>
                       ) : p > 0 ? (
-                        <Text style={styles.inProgressText}>{p}%</Text>
+                        <AppText style={styles.inProgressText}>{p}%</AppText>
                       ) : (
-                        <Text style={styles.notStartedText}>{t('notStarted')}</Text>
+                        <AppText style={styles.notStartedText}>{t('notStarted')}</AppText>
                       )}
                     </View>
                     <ProgressBar percent={p} height={3} />
@@ -256,7 +257,7 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'certs' && (
         <View style={styles.section}>
           {completedCourses.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noCertsYet')}</Text>
+            <AppText style={styles.emptyText}>{t('noCertsYet')}</AppText>
           ) : (
             completedCourses.map((course) => {
               const org = organizations.find((o) => o.id === course.organizationId);
@@ -274,17 +275,17 @@ const ProfileScreen = ({ navigation }) => {
                     {catInfo && (
                       <View style={[styles.certChip, { backgroundColor: catInfo.color + '22', borderColor: catInfo.color + '66' }]}>
                         <Ionicons name={catInfo.icon} size={11} color={catInfo.color} />
-                        <Text style={[styles.certChipText, { color: catInfo.color }]}>{catInfo.label}</Text>
+                        <AppText style={[styles.certChipText, { color: catInfo.color }]}>{catInfo.label}</AppText>
                       </View>
                     )}
-                    <Text style={styles.certCardTitle} numberOfLines={2}>{course.title}</Text>
-                    <Text style={styles.certCardOrg}>{org?.name || 'EduTok'}</Text>
+                    <AppText style={styles.certCardTitle} numberOfLines={2}>{course.title}</AppText>
+                    <AppText style={styles.certCardOrg}>{org?.name || 'EduTok'}</AppText>
                     <View style={styles.certCardMeta}>
                       <Ionicons name="calendar-outline" size={12} color={COLORS.textMuted} />
-                      <Text style={styles.certCardDate}>{t('issuedLabel')} {dateStr}</Text>
+                      <AppText style={styles.certCardDate}>{t('issuedLabel')} {dateStr}</AppText>
                       {course.difficulty ? (
                         <View style={styles.certDiffBadge}>
-                          <Text style={styles.certDiffText}>{course.difficulty}</Text>
+                          <AppText style={styles.certDiffText}>{course.difficulty}</AppText>
                         </View>
                       ) : null}
                     </View>
@@ -295,7 +296,7 @@ const ProfileScreen = ({ navigation }) => {
                     activeOpacity={0.8}
                   >
                     <Ionicons name="ribbon" size={16} color="#fff" />
-                    <Text style={styles.certCardBtnText}>{t('viewAndPrint')}</Text>
+                    <AppText style={styles.certCardBtnText}>{t('viewAndPrint')}</AppText>
                   </TouchableOpacity>
                 </View>
               );
@@ -307,16 +308,16 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'saved' && (
         <View style={styles.section}>
           {favoritedLessons.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noSavedLessons')}</Text>
+            <AppText style={styles.emptyText}>{t('noSavedLessons')}</AppText>
           ) : (
             favoritedLessons.map((lesson) => (
               <View key={lesson.id} style={styles.savedRow}>
                 <Image source={{ uri: lesson.thumbnail }} style={styles.savedThumb} />
                 <View style={styles.savedInfo}>
-                  <Text style={styles.savedTitle} numberOfLines={2}>{lesson.title}</Text>
+                  <AppText style={styles.savedTitle} numberOfLines={2}>{lesson.title}</AppText>
                   <View style={styles.savedMeta}>
                     <Ionicons name="bookmark" size={12} color={COLORS.secondary} />
-                    <Text style={styles.savedType}>{lesson.type}</Text>
+                    <AppText style={styles.savedType}>{lesson.type}</AppText>
                   </View>
                 </View>
               </View>
@@ -328,7 +329,7 @@ const ProfileScreen = ({ navigation }) => {
       {activeTab === 'history' && (
         <View style={styles.section}>
           {progress.completedLessons.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noCompletedLessons')}</Text>
+            <AppText style={styles.emptyText}>{t('noCompletedLessons')}</AppText>
           ) : (
             [...progress.completedLessons].reverse().slice(0, 20).map((cl, i) => {
               const lesson = courses.flatMap((c) => getLessonsForCourse(c.id)).find((l) => l.id === cl.lessonId);
@@ -339,8 +340,8 @@ const ProfileScreen = ({ navigation }) => {
                     <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                   </View>
                   <View style={styles.historyInfo}>
-                    <Text style={styles.historyTitle} numberOfLines={1}>{lesson.title}</Text>
-                    <Text style={styles.historyTime}>{formatTimeAgo(cl.completedAt)}</Text>
+                    <AppText style={styles.historyTitle} numberOfLines={1}>{lesson.title}</AppText>
+                    <AppText style={styles.historyTime}>{formatTimeAgo(cl.completedAt)}</AppText>
                   </View>
                 </View>
               );
@@ -352,7 +353,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Badges tab */}
       {activeTab === 'badges' && (
         <View style={styles.section}>
-          <Text style={styles.badgesSubtitle}>{earnedBadgeIds.size}/{BADGE_DEFS.length} {t('badgesEarned')}</Text>
+          <AppText style={styles.badgesSubtitle}>{earnedBadgeIds.size}/{BADGE_DEFS.length} {t('badgesEarned')}</AppText>
           <View style={styles.badgesGrid}>
             {BADGE_DEFS.map((def) => {
               const earned = badges.find((b) => b.id === def.id);
@@ -372,9 +373,9 @@ const ProfileScreen = ({ navigation }) => {
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.badgeLabel, !isEarned && styles.badgeLabelLocked]} numberOfLines={2}>
+                  <AppText style={[styles.badgeLabel, !isEarned && styles.badgeLabelLocked]} numberOfLines={2}>
                     {t(def.labelKey)}
-                  </Text>
+                  </AppText>
                 </TouchableOpacity>
               );
             })}
@@ -385,36 +386,36 @@ const ProfileScreen = ({ navigation }) => {
       {/* Analytics tab */}
       {activeTab === 'analytics' && (
         <View style={styles.section}>
-          <Text style={styles.analyticsTitle}>{t('weeklyTime')}</Text>
+          <AppText style={styles.analyticsTitle}>{t('weeklyTime')}</AppText>
           <View style={styles.chartContainer}>
             {weeklyData.map((w, i) => (
               <View key={i} style={styles.chartBarWrap}>
                 <View style={[styles.chartBar, { height: Math.max(4, Math.round(w.pct * 80)) }]} />
-                <Text style={styles.chartLabel}>{w.label}</Text>
+                <AppText style={styles.chartLabel}>{w.label}</AppText>
               </View>
             ))}
           </View>
-          <Text style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('courseBreakdown')}</Text>
+          <AppText style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('courseBreakdown')}</AppText>
           {enrolledCourses.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noEnrolledCourses')}</Text>
+            <AppText style={styles.emptyText}>{t('noEnrolledCourses')}</AppText>
           ) : (
             enrolledCourses.map((course) => {
               const pct = getCourseProgress(course.id);
               const done = progress.completedLessons.filter((cl) => cl.courseId === course.id).length;
               return (
                 <View key={course.id} style={styles.analyticsRow}>
-                  <Text style={styles.analyticsCourseTitle} numberOfLines={1}>{course.title}</Text>
+                  <AppText style={styles.analyticsCourseTitle} numberOfLines={1}>{course.title}</AppText>
                   <View style={styles.analyticsBarRow}>
                     <ProgressBar percent={pct} height={6} />
-                    <Text style={styles.analyticsPct}>{done}/{course.lessonIds.length}</Text>
+                    <AppText style={styles.analyticsPct}>{done}/{course.lessonIds.length}</AppText>
                   </View>
                 </View>
               );
             })
           )}
-          <Text style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('quizHistory')}</Text>
+          <AppText style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('quizHistory')}</AppText>
           {progress.passedQuizzes.length === 0 ? (
-            <Text style={styles.emptyText}>{t('noQuizzesYet')}</Text>
+            <AppText style={styles.emptyText}>{t('noQuizzesYet')}</AppText>
           ) : (
             [...progress.passedQuizzes].reverse().slice(0, 10).map((q, i) => (
               <View key={q.quizId + i} style={styles.quizHistRow}>
@@ -422,8 +423,8 @@ const ProfileScreen = ({ navigation }) => {
                   <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
                 </View>
                 <View style={styles.quizHistInfo}>
-                  <Text style={styles.quizHistScore}>{t('scoreLabel')}: {q.score}%</Text>
-                  <Text style={styles.quizHistDate}>{formatTimeAgo(q.passedAt)}</Text>
+                  <AppText style={styles.quizHistScore}>{t('scoreLabel')}: {q.score}%</AppText>
+                  <AppText style={styles.quizHistDate}>{formatTimeAgo(q.passedAt)}</AppText>
                 </View>
               </View>
             ))
@@ -436,7 +437,7 @@ const ProfileScreen = ({ navigation }) => {
       <View style={[styles.settingsSection, { marginHorizontal: hPad }]}>
         <View style={styles.settingRow}>
           <Ionicons name="notifications-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>{t('notifications')}</Text>
+          <AppText style={styles.settingLabel}>{t('notifications')}</AppText>
           <Switch
             value={user?.notificationsEnabled ?? true}
             onValueChange={async (val) => {
@@ -454,22 +455,22 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <View style={styles.settingRow}>
           <Ionicons name="language-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>{t('language')}</Text>
+          <AppText style={styles.settingLabel}>{t('language')}</AppText>
           <TouchableOpacity style={styles.langToggle} onPress={handleLanguageToggle}>
-            <Text style={styles.langToggleText}>{user?.language === 'am' ? 'አማርኛ' : 'English'}</Text>
+            <AppText style={styles.langToggleText}>{user?.language === 'am' ? 'አማርኛ' : 'English'}</AppText>
             <Ionicons name="swap-horizontal" size={14} color={COLORS.secondary} />
           </TouchableOpacity>
         </View>
         <View style={styles.settingRow}>
           <Ionicons name={user?.phoneVerified ? 'shield-checkmark' : 'shield-outline'} size={20} color={user?.phoneVerified ? COLORS.success : COLORS.warning} />
-          <Text style={styles.settingLabel}>{t('phoneVerification')}</Text>
-          <Text style={[styles.verifyStatus, { color: user?.phoneVerified ? COLORS.success : COLORS.warning }]}>
+          <AppText style={styles.settingLabel}>{t('phoneVerification')}</AppText>
+          <AppText style={[styles.verifyStatus, { color: user?.phoneVerified ? COLORS.success : COLORS.warning }]}>
             {user?.phoneVerified ? t('verified') : t('notVerified')}
-          </Text>
+          </AppText>
         </View>
         <View style={styles.settingRow}>
           <Ionicons name="text" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>{t('fontSize')}</Text>
+          <AppText style={styles.settingLabel}>{t('fontSize')}</AppText>
           <View style={styles.fontSizeBtns}>
             {[{ key: 'sm', label: 'A' }, { key: 'md', label: 'A' }, { key: 'lg', label: 'A' }].map(({ key, label }, i) => (
               <TouchableOpacity
@@ -477,14 +478,14 @@ const ProfileScreen = ({ navigation }) => {
                 style={[styles.fontBtn, fontScale === key && styles.fontBtnActive]}
                 onPress={() => setFontScale(key)}
               >
-                <Text style={[styles.fontBtnText, { fontSize: 10 + i * 2 }, fontScale === key && styles.fontBtnTextActive]}>{label}</Text>
+                <AppText style={[styles.fontBtnText, { fontSize: 10 + i * 2 }, fontScale === key && styles.fontBtnTextActive]}>{label}</AppText>
               </TouchableOpacity>
             ))}
           </View>
         </View>
         <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
           <Ionicons name="contrast-outline" size={20} color={COLORS.textSecondary} />
-          <Text style={styles.settingLabel}>{t('highContrastMode')}</Text>
+          <AppText style={styles.settingLabel}>{t('highContrastMode')}</AppText>
           <Switch
             value={highContrast}
             onValueChange={setHighContrast}
@@ -496,7 +497,7 @@ const ProfileScreen = ({ navigation }) => {
 
       <TouchableOpacity style={[styles.signOutBtn, { marginHorizontal: hPad }]} onPress={handleSignOut}>
         <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-        <Text style={styles.signOutText}>{t('signOut')}</Text>
+        <AppText style={styles.signOutText}>{t('signOut')}</AppText>
       </TouchableOpacity>
 
       <View style={{ height: 100 }} />
@@ -511,7 +512,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.editModal, { maxWidth: formMaxW, width: '100%', alignSelf: 'center' }]}>
             <View style={styles.editModalHeader}>
-              <Text style={styles.editModalTitle}>{t('editProfile')}</Text>
+              <AppText style={styles.editModalTitle}>{t('editProfile')}</AppText>
               <TouchableOpacity onPress={() => { setShowEditModal(false); setShowAvatarPicker(false); }}>
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
@@ -525,7 +526,7 @@ const ProfileScreen = ({ navigation }) => {
               <View style={styles.editAvatarBadge}>
                 <Ionicons name="camera" size={14} color="#fff" />
               </View>
-              <Text style={styles.changeAvatarText}>{t('changeAvatar')}</Text>
+              <AppText style={styles.changeAvatarText}>{t('changeAvatar')}</AppText>
             </TouchableOpacity>
             {showAvatarPicker && (
               <FlatList
@@ -543,7 +544,7 @@ const ProfileScreen = ({ navigation }) => {
                 )}
               />
             )}
-            <Text style={styles.editLabel}>{t('fullName')}</Text>
+            <AppText style={styles.editLabel}>{t('fullName')}</AppText>
             <TextInput
               style={styles.editInput}
               value={editForm.fullName}
@@ -551,7 +552,7 @@ const ProfileScreen = ({ navigation }) => {
               placeholder={t('yourFullNamePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
-            <Text style={styles.editLabel}>{t('bioLabel')}</Text>
+            <AppText style={styles.editLabel}>{t('bioLabel')}</AppText>
             <TextInput
               style={[styles.editInput, styles.editTextarea]}
               value={editForm.bio}
@@ -562,7 +563,7 @@ const ProfileScreen = ({ navigation }) => {
               maxLength={160}
             />
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
-              <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
+              <AppText style={styles.saveBtnText}>{t('saveChanges')}</AppText>
             </TouchableOpacity>
           </View>
         </View>
@@ -576,10 +577,10 @@ const ProfileScreen = ({ navigation }) => {
               <View style={[styles.badgeDetailIcon, { backgroundColor: selectedBadge.def.color + '33' }]}>
                 <Ionicons name={selectedBadge.def.icon} size={48} color={selectedBadge.def.color} />
               </View>
-              <Text style={styles.badgeDetailLabel}>{t(selectedBadge.def.labelKey)}</Text>
-              <Text style={styles.badgeDetailDate}>
+              <AppText style={styles.badgeDetailLabel}>{t(selectedBadge.def.labelKey)}</AppText>
+              <AppText style={styles.badgeDetailDate}>
                 {t('earnedOn')} {new Date(selectedBadge.earned.earnedAt).toLocaleDateString()}
-              </Text>
+              </AppText>
             </View>
           )}
         </TouchableOpacity>

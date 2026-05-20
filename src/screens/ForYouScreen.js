@@ -34,6 +34,7 @@ import { useTranslation } from '../utils/useTranslation';
 import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
 import StreakCelebration from '../components/StreakCelebration';
+import AppText from '../components/AppText';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -45,8 +46,8 @@ const TextContent = ({ lesson }) => (
     contentContainerStyle={styles.textContent}
     showsVerticalScrollIndicator={false}
   >
-    <Text style={styles.textTitle}>{lesson.title}</Text>
-    <Text style={styles.textBody}>{lesson.content.body}</Text>
+    <AppText style={styles.textTitle}>{lesson.title}</AppText>
+    <AppText style={styles.textBody}>{lesson.content.body}</AppText>
   </ScrollView>
 );
 
@@ -71,7 +72,7 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
             <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             {item.caption ? (
               <View style={styles.captionBox}>
-                <Text style={styles.captionText}>{item.caption}</Text>
+                <AppText style={styles.captionText}>{item.caption}</AppText>
               </View>
             ) : null}
           </View>
@@ -118,8 +119,8 @@ const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label })
           color={isActive ? color : '#fff'}
         />
       </Animated.View>
-      {count != null && <Text style={styles.actionCount}>{formatLargeNumber(count)}</Text>}
-      {label && <Text style={styles.actionLabel}>{label}</Text>}
+      {count != null && <AppText style={styles.actionCount}>{formatLargeNumber(count)}</AppText>}
+      {label && <AppText style={styles.actionLabel}>{label}</AppText>}
     </TouchableOpacity>
   );
 };
@@ -311,7 +312,7 @@ const ForYouScreen = ({ navigation }) => {
     return (
       <View style={styles.center}>
         <Ionicons name="book-outline" size={48} color={COLORS.textMuted} />
-        <Text style={styles.emptyText}>{t('noLessonsAvailable')}</Text>
+        <AppText style={styles.emptyText}>{t('noLessonsAvailable')}</AppText>
       </View>
     );
   }
@@ -338,7 +339,7 @@ const ForYouScreen = ({ navigation }) => {
           {lesson.type === 'image' && (
             <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideH} />
           )}
-          {lesson.type === 'text' && <TextContent key={lesson.id} lesson={lesson} />}
+          {lesson.type === 'text' && <AppTextContent key={lesson.id} lesson={lesson} />}
 
           {/* Top gradient */}
           <LinearGradient
@@ -363,7 +364,7 @@ const ForYouScreen = ({ navigation }) => {
 
           {/* Feed position counter (top-right) */}
           <View style={[styles.counter, { top: insets.top + 10 }]}>
-            <Text style={styles.counterText}>{currentIndex + 1} / {feed.length} {t('courses').toLowerCase()}</Text>
+            <AppText style={styles.counterText}>{currentIndex + 1} / {feed.length} {t('courses').toLowerCase()}</AppText>
           </View>
 
           {/* Bottom-left: course title + lesson info */}
@@ -372,10 +373,10 @@ const ForYouScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
               activeOpacity={0.75}
             >
-              <Text style={styles.courseTitle} numberOfLines={1}>📚 {course.title}</Text>
+              <AppText style={styles.courseTitle} numberOfLines={1}>📚 {course.title}</AppText>
             </TouchableOpacity>
 
-            <Text style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
+            <AppText style={styles.lessonTitle} numberOfLines={2}>{lesson.title}</AppText>
 
             <View style={styles.badgeRow}>
               <View style={styles.badge}>
@@ -388,13 +389,13 @@ const ForYouScreen = ({ navigation }) => {
                   size={11}
                   color={COLORS.secondary}
                 />
-                <Text style={styles.badgeText}>{lesson.type}</Text>
+                <AppText style={styles.badgeText}>{lesson.type}</AppText>
               </View>
-              <Text style={styles.durationText}>{formatDuration(lesson.duration)}</Text>
+              <AppText style={styles.durationText}>{formatDuration(lesson.duration)}</AppText>
               {lesson.hasQuiz && (
                 <View style={[styles.badge, styles.badgeQuiz]}>
                   <Ionicons name="help-circle" size={11} color={COLORS.primary} />
-                  <Text style={[styles.badgeText, { color: COLORS.primary }]}>{t('quiz')}</Text>
+                  <AppText style={[styles.badgeText, { color: COLORS.primary }]}>{t('quiz')}</AppText>
                 </View>
               )}
             </View>
@@ -407,12 +408,12 @@ const ForYouScreen = ({ navigation }) => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.7)" />
-                  <Text style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextCourse')}</Text>
+                  <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextCourse')}</AppText>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.swipeHint}>
                   <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.swipeHintText}>{t('swipeForNextCourse')}</Text>
+                  <AppText style={styles.swipeHintText}>{t('swipeForNextCourse')}</AppText>
                 </View>
               )
             )}

@@ -15,6 +15,7 @@ import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 
 const OrganizationProfileScreen = ({ route, navigation }) => {
   const { orgId } = route.params;
@@ -46,12 +47,12 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         <View style={styles.heroContent}>
           <Image source={{ uri: org.logo }} style={styles.logo} />
-          <Text style={styles.orgName}>{org.name}</Text>
+          <AppText style={styles.orgName}>{org.name}</AppText>
           {org.tags?.length > 0 && (
             <View style={styles.tagsRow}>
               {org.tags.map((t) => (
                 <View key={t} style={styles.tag}>
-                  <Text style={styles.tagText}>{t}</Text>
+                  <AppText style={styles.tagText}>{t}</AppText>
                 </View>
               ))}
             </View>
@@ -68,21 +69,21 @@ const OrganizationProfileScreen = ({ route, navigation }) => {
         ].map((s) => (
           <View key={s.label} style={styles.stat}>
             <Ionicons name={s.icon} size={20} color={COLORS.secondary} />
-            <Text style={styles.statValue}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
+            <AppText style={styles.statValue}>{s.value}</AppText>
+            <AppText style={styles.statLabel}>{s.label}</AppText>
           </View>
         ))}
       </View>
 
       {/* About */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('about')}</Text>
-        <Text style={styles.about}>{org.description}</Text>
+        <AppText style={styles.sectionTitle}>{t('about')}</AppText>
+        <AppText style={styles.about}>{org.description}</AppText>
       </View>
 
       {/* Courses */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{orgCourses.length} {t('courses')}</Text>
+        <AppText style={styles.sectionTitle}>{orgCourses.length} {t('courses')}</AppText>
       </View>
       {orgCourses.map((course) => (
         <CourseCard

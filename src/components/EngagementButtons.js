@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Share, Image } from
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/constants';
 import { formatLargeNumber } from '../utils/helpers';
+import AppText from './AppText';
 
 const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label }) => {
   const scale = React.useRef(new Animated.Value(1)).current;
@@ -25,9 +26,9 @@ const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label })
         />
       </Animated.View>
       {count != null && (
-        <Text style={styles.count}>{formatLargeNumber(count)}</Text>
+        <AppText style={styles.count}>{formatLargeNumber(count)}</AppText>
       )}
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <AppText style={styles.label}>{label}</AppText>}
     </TouchableOpacity>
   );
 };
