@@ -72,7 +72,53 @@ export const STORAGE_KEYS = {
   instructors: '@edutok_instructors',
   hasOnboarded: '@edutok_onboarded',
   comments: '@edutok_comments',
+  badges: '@edutok_badges',
+  a11y: '@edutok_a11y',
 };
+
+export const BADGE_DEFS = [
+  { id: 'first_lesson',    icon: 'star',       color: '#FFD700', labelKey: 'badgeFirstLesson',    check: (p)           => p.completedLessons.length >= 1 },
+  { id: 'week_warrior',    icon: 'flame',      color: '#FF5722', labelKey: 'badgeWeekWarrior',    check: (p)           => (p.streak || 0) >= 7 },
+  { id: 'quiz_master',     icon: 'trophy',     color: '#9C27B0', labelKey: 'badgeQuizMaster',     check: (p)           => p.passedQuizzes.length >= 10 },
+  { id: 'century_club',    icon: 'ribbon',     color: '#25F4EE', labelKey: 'badgeCenturyClub',    check: (p)           => p.completedLessons.length >= 100 },
+  { id: 'explorer',        icon: 'compass',    color: '#4CAF50', labelKey: 'badgeExplorer',       check: (p, courses)  => new Set(courses.filter((c) => p.completedLessons.some((cl) => cl.courseId === c.id)).map((c) => c.category)).size >= 5 },
+  { id: 'course_graduate', icon: 'school',     color: '#FE2C55', labelKey: 'badgeCourseGraduate', check: (p, courses)  => courses.some((c) => c.lessonIds.length > 0 && c.lessonIds.every((lid) => p.completedLessons.some((cl) => cl.lessonId === lid))) },
+];
+
+export const PRESET_AVATARS = [
+  'https://picsum.photos/seed/av1/200/200',
+  'https://picsum.photos/seed/av2/200/200',
+  'https://picsum.photos/seed/av3/200/200',
+  'https://picsum.photos/seed/av4/200/200',
+  'https://picsum.photos/seed/av5/200/200',
+  'https://picsum.photos/seed/av6/200/200',
+  'https://picsum.photos/seed/av7/200/200',
+  'https://picsum.photos/seed/av8/200/200',
+  'https://picsum.photos/seed/av9/200/200',
+  'https://picsum.photos/seed/av10/200/200',
+  'https://picsum.photos/seed/av11/200/200',
+  'https://picsum.photos/seed/av12/200/200',
+];
+
+export const HIGH_CONTRAST_COLORS = {
+  background: '#000000',
+  surface: '#0A0A0A',
+  card: '#141414',
+  cardAlt: '#1E1E1E',
+  primary: '#FF4D6D',
+  secondary: '#00FFE5',
+  text: '#FFFFFF',
+  textSecondary: '#CCCCCC',
+  textMuted: '#999999',
+  border: '#555555',
+  success: '#66BB6A',
+  warning: '#FFA726',
+  error: '#EF5350',
+  overlay: 'rgba(0,0,0,0.75)',
+  overlayDark: 'rgba(0,0,0,0.92)',
+};
+
+export const FONT_SCALE_MAP = { sm: 0.875, md: 1.0, lg: 1.2 };
 
 export const DIFFICULTY = {
   Beginner: { color: '#4CAF50', label: 'Beginner' },

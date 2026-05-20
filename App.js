@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CourseProvider } from './src/context/CourseContext';
 import { ToastProvider } from './src/context/ToastContext';
+import { AccessibilityProvider } from './src/context/AccessibilityContext';
 import TabNavigator from './src/navigation/TabNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -54,9 +55,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <AuthProvider>
-        <AppInner />
-      </AuthProvider>
+      <AccessibilityProvider>
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
+      </AccessibilityProvider>
     </SafeAreaProvider>
   );
 }

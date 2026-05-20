@@ -33,6 +33,7 @@ import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
+import StreakCelebration from '../components/StreakCelebration';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -134,6 +135,7 @@ const ForYouScreen = ({ navigation }) => {
     isLiked, isFavorited, isEnrolled, isQuizPassed,
     toggleLike, toggleFavorite, enroll,
     completeLesson, recordQuizPass,
+    streakMilestone, clearStreakMilestone,
   } = useCourses();
 
   const insets = useSafeAreaInsets();
@@ -496,6 +498,12 @@ const ForYouScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      <StreakCelebration
+        visible={!!streakMilestone}
+        streak={streakMilestone}
+        onFinish={clearStreakMilestone}
+      />
     </View>
   );
 };

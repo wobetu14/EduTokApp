@@ -153,6 +153,44 @@ const translations = {
     findLessonsOnAnyTopic: 'Find lessons on any topic',
     // Comments
     noCommentsFirst: 'No comments yet. Be the first!',
+    comment: 'Comment',
+    comments: 'Comments',
+    reply: 'Reply',
+    replyingTo: 'Replying to',
+    showReplies: 'Show replies',
+    hideReplies: 'Hide replies',
+    addComment: 'Add a comment...',
+    noCommentsYet: 'No comments yet. Be the first!',
+    // Badges
+    badgesTab: 'Badges',
+    badgesEarned: 'earned',
+    badgeFirstLesson: 'First Lesson',
+    badgeWeekWarrior: 'Week Warrior',
+    badgeQuizMaster: 'Quiz Master',
+    badgeCenturyClub: 'Century Club',
+    badgeExplorer: 'Explorer',
+    badgeCourseGraduate: 'Course Graduate',
+    earnedOn: 'Earned on',
+    // Streak celebration
+    dayStreakLabel: 'Day Streak',
+    streakCelebMsg: "Amazing! You're on fire — keep the momentum going!",
+    keepGoing: 'Keep Going!',
+    // Profile customization
+    changeAvatar: 'Change Photo',
+    chooseAvatar: 'Choose a photo',
+    // Analytics
+    analyticsTab: 'Stats',
+    weeklyTime: 'Weekly Activity',
+    courseBreakdown: 'Course Breakdown',
+    quizHistory: 'Quiz History',
+    scoreLabel: 'Score',
+    noQuizzesYet: 'No quizzes passed yet.',
+    // Accessibility
+    fontSize: 'Font Size',
+    highContrastMode: 'High Contrast',
+    // Image matching quiz
+    selectImageFirst: 'Tap an image, then tap its label',
+    checkMatches: 'Check Matches',
     // Misc
     loading: 'Loading...',
     noResults: 'No results found',
@@ -336,6 +374,44 @@ const translations = {
     findLessonsOnAnyTopic: 'ስለ ማናቸውም ርዕስ ትምህርቶችን ፈልግ',
     // Comments
     noCommentsFirst: 'ምንም አስተያየቶች የሉም። የመጀመሪያ ሁን!',
+    comment: 'አስተያየት',
+    comments: 'አስተያየቶች',
+    reply: 'መልስ',
+    replyingTo: 'ምላሽ ለ',
+    showReplies: 'ምላሾች አሳይ',
+    hideReplies: 'ምላሾች ደብቅ',
+    addComment: 'አስተያየት ጨምር...',
+    noCommentsYet: 'ምንም አስተያየቶች የሉም። የመጀመሪያ ሁን!',
+    // Badges
+    badgesTab: 'ሽልማቶች',
+    badgesEarned: 'ተሰጥቷል',
+    badgeFirstLesson: 'የመጀመሪያ ትምህርት',
+    badgeWeekWarrior: 'ሳምንት ተዋጊ',
+    badgeQuizMaster: 'ፈተና ሊቅ',
+    badgeCenturyClub: 'ምዕተ ክበብ',
+    badgeExplorer: 'አሳሽ',
+    badgeCourseGraduate: 'ኮርስ ምሩቅ',
+    earnedOn: 'የተሰጠበት',
+    // Streak celebration
+    dayStreakLabel: 'ቀን ተከታታይ',
+    streakCelebMsg: 'አስደናቂ! ቀጥልበት — ፍጥነትህን ጠብቅ!',
+    keepGoing: 'ቀጥል!',
+    // Profile customization
+    changeAvatar: 'ፎቶ ቀይር',
+    chooseAvatar: 'ፎቶ ምረጥ',
+    // Analytics
+    analyticsTab: 'ስታቲስቲክስ',
+    weeklyTime: 'ሳምንታዊ ተግባር',
+    courseBreakdown: 'የኮርስ ዝርዝር',
+    quizHistory: 'የፈተና ታሪክ',
+    scoreLabel: 'ውጤት',
+    noQuizzesYet: 'ምንም ፈተና አልተጠናቀቀም።',
+    // Accessibility
+    fontSize: 'የፊደል መጠን',
+    highContrastMode: 'ከፍተኛ ንፅፅር',
+    // Image matching quiz
+    selectImageFirst: 'ምስሉን ጠቅ አድርግ፣ ከዚያ ሌቤሉን ጠቅ አድርግ',
+    checkMatches: 'ዝምድናዎቹን ፈትሽ',
     // Misc
     loading: 'በመጫን ላይ...',
     noResults: 'ምንም ውጤት አልተገኘም',

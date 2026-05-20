@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,13 +18,13 @@ import * as api from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../utils/useTranslation';
 
-const CommentItem = ({ item }) => (
-  <View style={styles.commentRow}>
+const ReplyItem = ({ item }) => (
+  <View style={styles.replyRow}>
     <Image
       source={{ uri: item.avatar || `https://picsum.photos/seed/${item.userId}/40/40` }}
-      style={styles.avatar}
+      style={styles.replyAvatar}
     />
-    <View style={styles.bubble}>
+    <View style={styles.replyBubble}>
       <View style={styles.nameRow}>
         <Text style={styles.username}>@{item.username}</Text>
         <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
@@ -34,6 +34,47 @@ const CommentItem = ({ item }) => (
   </View>
 );
 
+const CommentItem = ({ item, replies, onReply }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const showReplies = expanded ? replies : [];
+  return (
+    <View>
+      <View style={styles.commentRow}>
+        <Image
+          source={{ uri: item.avatar || `https://picsum.photos/seed/${item.userId}/40/40` }}
+          style={styles.avatar}
+        />
+        <View style={styles.bubble}>
+          <View style={styles.nameRow}>
+            <Text style={styles.username}>@{item.username}</Text>
+            <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
+          </View>
+          <Text style={styles.commentText}>{item.text}</Text>
+          <TouchableOpacity onPress={() => onReply(item.id, item.username)} style={styles.replyBtn}>
+            <Ionicons name="return-down-forward-outline" size={13} color={COLORS.textMuted} />
+            <Text style={styles.replyBtnText}>{t('reply')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      {/* Replies */}
+      {replies.length > 0 && (
+        <View style={styles.repliesContainer}>
+          <View style={styles.replyAccent} />
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.toggleReplies}>
+              <Text style={styles.toggleRepliesText}>
+                {expanded ? t('hideReplies') : `${t('showReplies')} (${replies.length})`}
+              </Text>
+            </TouchableOpacity>
+            {showReplies.map((r) => <ReplyItem key={r.id} item={r} />)}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
 const CommentThread = ({ lessonId, onClose }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -41,6 +82,7 @@ const CommentThread = ({ lessonId, onClose }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // { commentId, username }
 
   useEffect(() => {
     api.fetchComments(lessonId).then((c) => {
@@ -49,20 +91,40 @@ const CommentThread = ({ lessonId, onClose }) => {
     });
   }, [lessonId]);
 
+  const commentTree = useMemo(() => {
+    const top = comments.filter((c) => !c.parentId);
+    return top.map((c) => ({
+      ...c,
+      replies: comments.filter((r) => r.parentId === c.id),
+    }));
+  }, [comments]);
+
+  const handleReply = useCallback((commentId, username) => {
+    setReplyingTo({ commentId, username });
+    setText('');
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyingTo(null);
+    setText('');
+  }, []);
+
   const handlePost = useCallback(async () => {
     if (!text.trim() || posting) return;
     setPosting(true);
-    const updated = await api.postComment(
-      lessonId,
-      user.id,
-      user.username,
-      user.avatar,
-      text.trim()
-    );
+    let updated;
+    if (replyingTo) {
+      updated = await api.postReply(lessonId, replyingTo.commentId, user.id, user.username, user.avatar, text.trim());
+    } else {
+      updated = await api.postComment(lessonId, user.id, user.username, user.avatar, text.trim());
+    }
     setComments(updated);
     setText('');
+    setReplyingTo(null);
     setPosting(false);
-  }, [text, posting, lessonId, user]);
+  }, [text, posting, lessonId, user, replyingTo]);
+
+  const topCount = commentTree.length;
 
   return (
     <KeyboardAvoidingView
@@ -71,7 +133,7 @@ const CommentThread = ({ lessonId, onClose }) => {
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
+          {topCount} {topCount === 1 ? t('comment') : t('comments')}
         </Text>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={24} color="#444" />
@@ -81,15 +143,31 @@ const CommentThread = ({ lessonId, onClose }) => {
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={comments}
+          data={commentTree}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <CommentItem item={item} />}
+          renderItem={({ item }) => (
+            <CommentItem
+              item={item}
+              replies={item.replies}
+              onReply={handleReply}
+            />
+          )}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <Text style={styles.empty}>No comments yet. Be the first!</Text>
+            <Text style={styles.empty}>{t('noCommentsYet')}</Text>
           }
         />
       )}
+
+      {replyingTo && (
+        <View style={styles.replyingBanner}>
+          <Text style={styles.replyingText}>{t('replyingTo')} @{replyingTo.username}</Text>
+          <TouchableOpacity onPress={cancelReply}>
+            <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.inputRow}>
         <Image
           source={{ uri: user?.avatar || `https://picsum.photos/seed/me/40/40` }}
@@ -97,7 +175,7 @@ const CommentThread = ({ lessonId, onClose }) => {
         />
         <TextInput
           style={styles.input}
-          placeholder="Add a comment..."
+          placeholder={replyingTo ? `${t('replyingTo')} @${replyingTo.username}...` : t('addComment')}
           placeholderTextColor="#aaa"
           value={text}
           onChangeText={setText}
@@ -179,6 +257,72 @@ const styles = StyleSheet.create({
     color: '#222',
     fontSize: SIZES.sm,
     lineHeight: 19,
+  },
+  replyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  replyBtnText: {
+    color: COLORS.textMuted,
+    fontSize: SIZES.xs,
+    fontWeight: '600',
+  },
+  repliesContainer: {
+    flexDirection: 'row',
+    marginLeft: 46,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  replyAccent: {
+    width: 2,
+    backgroundColor: COLORS.primary + '44',
+    borderRadius: 1,
+    marginRight: 10,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  toggleReplies: {
+    paddingVertical: 4,
+  },
+  toggleRepliesText: {
+    color: COLORS.secondary,
+    fontSize: SIZES.xs,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  replyRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  replyAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ebebeb',
+  },
+  replyBubble: {
+    flex: 1,
+    backgroundColor: '#eeeeee',
+    borderRadius: 10,
+    padding: 8,
+  },
+  replyingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#f0f0f0',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  replyingText: {
+    color: '#555',
+    fontSize: SIZES.xs,
+    fontWeight: '600',
   },
   empty: {
     color: '#aaa',

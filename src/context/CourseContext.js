@@ -4,9 +4,11 @@ import React, {
   useEffect,
   useReducer,
   useCallback,
+  useRef,
 } from 'react';
 import * as api from '../services/apiService';
 import { useAuth } from './AuthContext';
+import { BADGE_DEFS } from '../utils/constants';
 
 const CourseContext = createContext(null);
 
@@ -25,6 +27,9 @@ const initialState = {
     lastActiveDate: null,
     totalSeconds: 0,
   },
+  badges: [],
+  streakMilestone: null,
+  newBadges: [],
   isLoading: true,
 };
 
@@ -38,10 +43,17 @@ const reducer = (state, action) => {
         instructors: action.instructors,
         lessons: action.lessons,
         progress: action.progress,
+        badges: action.badges || [],
         isLoading: false,
       };
     case 'SET_PROGRESS':
       return { ...state, progress: action.progress };
+    case 'SET_BADGES':
+      return { ...state, badges: action.badges };
+    case 'SET_STREAK_MILESTONE':
+      return { ...state, streakMilestone: action.value };
+    case 'SET_NEW_BADGES':
+      return { ...state, newBadges: action.badges };
     case 'RESET':
       return { ...initialState };
     default:
@@ -52,6 +64,11 @@ const reducer = (state, action) => {
 export const CourseProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { isSignedIn } = useAuth();
+  const coursesRef = useRef([]);
+
+  useEffect(() => {
+    coursesRef.current = state.courses;
+  }, [state.courses]);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -59,17 +76,33 @@ export const CourseProvider = ({ children }) => {
       return;
     }
     const load = async () => {
-      const [courses, organizations, instructors, lessons, progress] = await Promise.all([
+      const [courses, organizations, instructors, lessons, progress, badges] = await Promise.all([
         api.fetchCourses(),
         api.fetchOrganizations(),
         api.fetchInstructors(),
         api.fetchLessons(),
         api.fetchProgress(),
+        api.fetchBadges(),
       ]);
-      dispatch({ type: 'LOADED', courses, organizations, instructors, lessons, progress });
+      dispatch({ type: 'LOADED', courses, organizations, instructors, lessons, progress, badges });
     };
     load();
   }, [isSignedIn]);
+
+  const checkAndAwardBadges = useCallback(async (progress) => {
+    const courses = coursesRef.current;
+    const earned = await api.fetchBadges();
+    const earnedIds = new Set(earned.map((b) => b.id));
+    const newOnes = BADGE_DEFS.filter(
+      (def) => !earnedIds.has(def.id) && def.check(progress, courses)
+    ).map((def) => ({ id: def.id, earnedAt: new Date().toISOString() }));
+    if (newOnes.length > 0) {
+      const updated = [...earned, ...newOnes];
+      await api.saveBadges(updated);
+      dispatch({ type: 'SET_BADGES', badges: updated });
+      dispatch({ type: 'SET_NEW_BADGES', badges: newOnes });
+    }
+  }, []);
 
   const enroll = useCallback(async (courseId) => {
     const progress = await api.enrollCourse(courseId);
@@ -77,9 +110,15 @@ export const CourseProvider = ({ children }) => {
   }, []);
 
   const completeLesson = useCallback(async (lessonId, courseId, durationSeconds) => {
+    const prevStreak = state.progress.streak || 0;
     const progress = await api.completeLesson(lessonId, courseId, durationSeconds);
     dispatch({ type: 'SET_PROGRESS', progress });
-  }, []);
+    const newStreak = progress.streak || 0;
+    if (newStreak > prevStreak && [3, 7, 14, 30].includes(newStreak)) {
+      dispatch({ type: 'SET_STREAK_MILESTONE', value: newStreak });
+    }
+    checkAndAwardBadges(progress);
+  }, [state.progress.streak, checkAndAwardBadges]);
 
   const toggleLike = useCallback(async (lessonId) => {
     const progress = await api.toggleLike(lessonId);
@@ -94,6 +133,15 @@ export const CourseProvider = ({ children }) => {
   const recordQuizPass = useCallback(async (quizId, lessonId, score) => {
     const progress = await api.recordQuizPass(quizId, lessonId, score);
     dispatch({ type: 'SET_PROGRESS', progress });
+    checkAndAwardBadges(progress);
+  }, [checkAndAwardBadges]);
+
+  const clearStreakMilestone = useCallback(() => {
+    dispatch({ type: 'SET_STREAK_MILESTONE', value: null });
+  }, []);
+
+  const clearNewBadges = useCallback(() => {
+    dispatch({ type: 'SET_NEW_BADGES', badges: [] });
   }, []);
 
   // Derived helpers
@@ -185,6 +233,8 @@ export const CourseProvider = ({ children }) => {
         toggleLike,
         toggleFavorite,
         recordQuizPass,
+        clearStreakMilestone,
+        clearNewBadges,
         isEnrolled,
         isLessonCompleted,
         isLiked,

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
+import { COLORS, SIZES, CATEGORIES, BADGE_DEFS, PRESET_AVATARS } from '../utils/constants';
 import ProgressBar from '../components/ProgressBar';
 import { useAuth } from '../context/AuthContext';
 import { useCourses } from '../context/CourseContext';
@@ -22,6 +22,7 @@ import { formatTimeAgo } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { scheduleDailyReminder, cancelDailyReminder, requestPermissions } from '../services/notificationService';
+import { useA11y } from '../context/AccessibilityContext';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
@@ -39,10 +40,12 @@ const ProfileScreen = ({ navigation }) => {
   const { user, signOut, updateUser } = useAuth();
   const { hPad, formMaxW } = useResponsive();
   const { t } = useTranslation();
+  const { fontScale, highContrast, setFontScale, setHighContrast } = useA11y();
   const {
     courses,
     organizations,
     progress,
+    badges,
     getCourseProgress,
     getLessonsForCourse,
   } = useCourses();
@@ -69,8 +72,12 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ fullName: user?.fullName || '', bio: user?.bio || '' });
+  const [editForm, setEditForm] = useState({ fullName: user?.fullName || '', bio: user?.bio || '', avatar: user?.avatar || '' });
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [activeTab, setActiveTab] = useState('progress');
+  const [selectedBadge, setSelectedBadge] = useState(null);
+
+  const earnedBadgeIds = useMemo(() => new Set(badges.map((b) => b.id)), [badges]);
 
   const enrolledCourses = useMemo(
     () => courses.filter((c) => progress.enrolledCourses.includes(c.id)),
@@ -98,9 +105,30 @@ const ProfileScreen = ({ navigation }) => {
 
   const totalHours = Math.round((progress.totalSeconds || 0) / 3600 * 10) / 10;
 
+  // Analytics: weekly activity (last 6 weeks)
+  const weeklyData = useMemo(() => {
+    const weeks = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i * 7);
+      return d.toISOString().slice(0, 10).slice(0, 7); // YYYY-MM approx week bucket
+    }).reverse();
+    const buckets = Object.fromEntries(weeks.map((w) => [w, 0]));
+    progress.completedLessons.forEach((cl) => {
+      const wk = cl.completedAt?.slice(0, 7);
+      if (wk && wk in buckets) {
+        const lesson = courses.flatMap((c) => getLessonsForCourse(c.id)).find((l) => l.id === cl.lessonId);
+        buckets[wk] += lesson?.duration || 60;
+      }
+    });
+    const vals = Object.values(buckets);
+    const max = Math.max(...vals, 1);
+    return weeks.map((w, i) => ({ label: w.slice(5), seconds: vals[i], pct: vals[i] / max }));
+  }, [progress.completedLessons, courses, getLessonsForCourse]);
+
   const handleSaveProfile = async () => {
     await updateUser(editForm);
     setShowEditModal(false);
+    setShowAvatarPicker(false);
   };
 
   const handleSignOut = () => {
@@ -156,22 +184,26 @@ const ProfileScreen = ({ navigation }) => {
       )}
 
       {/* Tab row */}
-      <View style={[styles.tabRow, { paddingHorizontal: hPad }]}>
-        {[
-          { key: 'progress', label: t('progressTab') },
-          { key: 'certs',    label: `${t('certsTab')}${completedCourses.length > 0 ? ` (${completedCourses.length})` : ''}` },
-          { key: 'saved',    label: t('favoriteLessons') },
-          { key: 'history',  label: t('history') },
-        ].map(({ key, label }) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.tab, activeTab === key && styles.tabActive]}
-            onPress={() => setActiveTab(key)}
-          >
-            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabScrollRow, { paddingHorizontal: hPad }]}>
+        <View style={styles.tabRow}>
+          {[
+            { key: 'progress', label: t('progressTab') },
+            { key: 'certs',    label: `${t('certsTab')}${completedCourses.length > 0 ? ` (${completedCourses.length})` : ''}` },
+            { key: 'saved',    label: t('favoriteLessons') },
+            { key: 'history',  label: t('history') },
+            { key: 'badges',   label: t('badgesTab') },
+            { key: 'analytics', label: t('analyticsTab') },
+          ].map(({ key, label }) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.tab, activeTab === key && styles.tabActive]}
+              onPress={() => setActiveTab(key)}
+            >
+              <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
       {/* Tab content */}
       {activeTab === 'progress' && (
@@ -317,6 +349,88 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       )}
 
+      {/* Badges tab */}
+      {activeTab === 'badges' && (
+        <View style={styles.section}>
+          <Text style={styles.badgesSubtitle}>{earnedBadgeIds.size}/{BADGE_DEFS.length} {t('badgesEarned')}</Text>
+          <View style={styles.badgesGrid}>
+            {BADGE_DEFS.map((def) => {
+              const earned = badges.find((b) => b.id === def.id);
+              const isEarned = !!earned;
+              return (
+                <TouchableOpacity
+                  key={def.id}
+                  style={[styles.badgeCard, !isEarned && styles.badgeCardLocked]}
+                  onPress={() => isEarned && setSelectedBadge({ def, earned })}
+                  activeOpacity={isEarned ? 0.75 : 1}
+                >
+                  <View style={[styles.badgeIconWrap, { backgroundColor: def.color + (isEarned ? '33' : '11') }]}>
+                    <Ionicons name={def.icon} size={28} color={isEarned ? def.color : COLORS.textMuted} />
+                    {!isEarned && (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={12} color={COLORS.textMuted} />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.badgeLabel, !isEarned && styles.badgeLabelLocked]} numberOfLines={2}>
+                    {t(def.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Analytics tab */}
+      {activeTab === 'analytics' && (
+        <View style={styles.section}>
+          <Text style={styles.analyticsTitle}>{t('weeklyTime')}</Text>
+          <View style={styles.chartContainer}>
+            {weeklyData.map((w, i) => (
+              <View key={i} style={styles.chartBarWrap}>
+                <View style={[styles.chartBar, { height: Math.max(4, Math.round(w.pct * 80)) }]} />
+                <Text style={styles.chartLabel}>{w.label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('courseBreakdown')}</Text>
+          {enrolledCourses.length === 0 ? (
+            <Text style={styles.emptyText}>{t('noEnrolledCourses')}</Text>
+          ) : (
+            enrolledCourses.map((course) => {
+              const pct = getCourseProgress(course.id);
+              const done = progress.completedLessons.filter((cl) => cl.courseId === course.id).length;
+              return (
+                <View key={course.id} style={styles.analyticsRow}>
+                  <Text style={styles.analyticsCourseTitle} numberOfLines={1}>{course.title}</Text>
+                  <View style={styles.analyticsBarRow}>
+                    <ProgressBar percent={pct} height={6} />
+                    <Text style={styles.analyticsPct}>{done}/{course.lessonIds.length}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+          <Text style={[styles.analyticsTitle, { marginTop: 16 }]}>{t('quizHistory')}</Text>
+          {progress.passedQuizzes.length === 0 ? (
+            <Text style={styles.emptyText}>{t('noQuizzesYet')}</Text>
+          ) : (
+            [...progress.passedQuizzes].reverse().slice(0, 10).map((q, i) => (
+              <View key={q.quizId + i} style={styles.quizHistRow}>
+                <View style={styles.quizHistIcon}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                </View>
+                <View style={styles.quizHistInfo}>
+                  <Text style={styles.quizHistScore}>{t('scoreLabel')}: {q.score}%</Text>
+                  <Text style={styles.quizHistDate}>{formatTimeAgo(q.passedAt)}</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
       {/* Settings */}
       <SectionTitle>{t('settings')}</SectionTitle>
       <View style={[styles.settingsSection, { marginHorizontal: hPad }]}>
@@ -353,6 +467,31 @@ const ProfileScreen = ({ navigation }) => {
             {user?.phoneVerified ? t('verified') : t('notVerified')}
           </Text>
         </View>
+        <View style={styles.settingRow}>
+          <Ionicons name="text" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.settingLabel}>{t('fontSize')}</Text>
+          <View style={styles.fontSizeBtns}>
+            {[{ key: 'sm', label: 'A' }, { key: 'md', label: 'A' }, { key: 'lg', label: 'A' }].map(({ key, label }, i) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.fontBtn, fontScale === key && styles.fontBtnActive]}
+                onPress={() => setFontScale(key)}
+              >
+                <Text style={[styles.fontBtnText, { fontSize: 10 + i * 2 }, fontScale === key && styles.fontBtnTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+          <Ionicons name="contrast-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.settingLabel}>{t('highContrastMode')}</Text>
+          <Switch
+            value={highContrast}
+            onValueChange={setHighContrast}
+            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            thumbColor="#fff"
+          />
+        </View>
       </View>
 
       <TouchableOpacity style={[styles.signOutBtn, { marginHorizontal: hPad }]} onPress={handleSignOut}>
@@ -363,15 +502,47 @@ const ProfileScreen = ({ navigation }) => {
       <View style={{ height: 100 }} />
 
       {/* Edit Profile Modal */}
-      <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setShowEditModal(false); setShowAvatarPicker(false); }}
+      >
         <View style={styles.modalOverlay}>
           <View style={[styles.editModal, { maxWidth: formMaxW, width: '100%', alignSelf: 'center' }]}>
             <View style={styles.editModalHeader}>
               <Text style={styles.editModalTitle}>{t('editProfile')}</Text>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <TouchableOpacity onPress={() => { setShowEditModal(false); setShowAvatarPicker(false); }}>
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
+            {/* Avatar picker */}
+            <TouchableOpacity style={styles.avatarPickerBtn} onPress={() => setShowAvatarPicker((v) => !v)}>
+              <Image
+                source={{ uri: editForm.avatar || user?.avatar || `https://picsum.photos/seed/profile/200/200` }}
+                style={styles.editAvatar}
+              />
+              <View style={styles.editAvatarBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+              <Text style={styles.changeAvatarText}>{t('changeAvatar')}</Text>
+            </TouchableOpacity>
+            {showAvatarPicker && (
+              <FlatList
+                data={PRESET_AVATARS}
+                keyExtractor={(item) => item}
+                numColumns={4}
+                style={styles.avatarGrid}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => { setEditForm((f) => ({ ...f, avatar: item })); setShowAvatarPicker(false); }}
+                    style={[styles.avatarOption, editForm.avatar === item && styles.avatarOptionSelected]}
+                  >
+                    <Image source={{ uri: item }} style={styles.avatarOptionImg} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
             <Text style={styles.editLabel}>{t('fullName')}</Text>
             <TextInput
               style={styles.editInput}
@@ -395,6 +566,23 @@ const ProfileScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Badge detail modal */}
+      <Modal visible={!!selectedBadge} transparent animationType="fade" onRequestClose={() => setSelectedBadge(null)}>
+        <TouchableOpacity style={styles.badgeModalOverlay} activeOpacity={1} onPress={() => setSelectedBadge(null)}>
+          {selectedBadge && (
+            <View style={styles.badgeDetail}>
+              <View style={[styles.badgeDetailIcon, { backgroundColor: selectedBadge.def.color + '33' }]}>
+                <Ionicons name={selectedBadge.def.icon} size={48} color={selectedBadge.def.color} />
+              </View>
+              <Text style={styles.badgeDetailLabel}>{t(selectedBadge.def.labelKey)}</Text>
+              <Text style={styles.badgeDetailDate}>
+                {t('earnedOn')} {new Date(selectedBadge.earned.earnedAt).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </Modal>
     </ScrollView>
   );
@@ -458,13 +646,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.warning + '66',
   },
   verifyText: { flex: 1, color: COLORS.warning, fontSize: SIZES.sm, fontWeight: '600' },
-  tabRow: {
-    flexDirection: 'row',
-    paddingTop: 12,
-    gap: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
   tab: {
     flex: 1,
     paddingBottom: 12,
@@ -599,6 +780,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   editTextarea: { height: 90, textAlignVertical: 'top' },
+  avatarPickerBtn: { alignItems: 'center', marginBottom: 16, position: 'relative' },
+  editAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.card },
+  editAvatarBadge: {
+    position: 'absolute', bottom: 22, right: '38%',
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  changeAvatarText: { color: COLORS.secondary, fontSize: SIZES.xs, fontWeight: '600', marginTop: 4 },
+  avatarGrid: { maxHeight: 160, marginBottom: 12 },
+  avatarOption: { flex: 1, margin: 4, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
+  avatarOptionSelected: { borderColor: COLORS.secondary },
+  avatarOptionImg: { width: '100%', aspectRatio: 1 },
   saveBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: 14,
@@ -606,6 +799,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
+  // Badges
+  badgesSubtitle: { color: COLORS.textMuted, fontSize: SIZES.sm, marginBottom: 8, textAlign: 'center' },
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badgeCard: { width: '30%', alignItems: 'center', gap: 6 },
+  badgeCardLocked: { opacity: 0.45 },
+  badgeIconWrap: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  lockOverlay: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.card, borderRadius: 8, padding: 2 },
+  badgeLabel: { color: COLORS.text, fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  badgeLabelLocked: { color: COLORS.textMuted },
+  badgeModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center' },
+  badgeDetail: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 28, alignItems: 'center', gap: 12, width: 240 },
+  badgeDetailIcon: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+  badgeDetailLabel: { color: COLORS.text, fontSize: SIZES.lg, fontWeight: '800', textAlign: 'center' },
+  badgeDetailDate: { color: COLORS.textMuted, fontSize: SIZES.xs },
+  // Analytics
+  analyticsTitle: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '700', marginBottom: 10 },
+  chartContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6, marginBottom: 8 },
+  chartBarWrap: { flex: 1, alignItems: 'center', gap: 4 },
+  chartBar: { width: '100%', backgroundColor: COLORS.primary, borderRadius: 4, minHeight: 4 },
+  chartLabel: { color: COLORS.textMuted, fontSize: 9, fontWeight: '600' },
+  analyticsRow: { gap: 6, marginBottom: 10 },
+  analyticsCourseTitle: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '600' },
+  analyticsBarRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  analyticsPct: { color: COLORS.textMuted, fontSize: SIZES.xs, width: 36, textAlign: 'right' },
+  quizHistRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  quizHistIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.success + '22', alignItems: 'center', justifyContent: 'center' },
+  quizHistInfo: { flex: 1 },
+  quizHistScore: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '600' },
+  quizHistDate: { color: COLORS.textMuted, fontSize: SIZES.xs },
+  // Accessibility settings
+  fontSizeBtns: { flexDirection: 'row', gap: 6 },
+  fontBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
+  fontBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  fontBtnText: { color: COLORS.textSecondary, fontWeight: '700' },
+  fontBtnTextActive: { color: '#fff' },
+  tabScrollRow: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  tabRow: { flexDirection: 'row', paddingTop: 12, gap: 4 },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: SIZES.base },
 });
 

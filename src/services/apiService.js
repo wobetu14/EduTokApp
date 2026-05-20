@@ -150,7 +150,30 @@ export const postComment = async (lessonId, userId, username, avatar, text) => {
     text,
     createdAt: new Date().toISOString(),
     likes: 0,
+    parentId: null,
+    depth: 0,
   };
   const updated = await storage.addComment(lessonId, comment);
   return updated;
 };
+
+export const postReply = async (lessonId, parentId, userId, username, avatar, text) => {
+  const reply = {
+    id: generateId(),
+    lessonId,
+    userId,
+    username,
+    avatar,
+    text,
+    createdAt: new Date().toISOString(),
+    likes: 0,
+    parentId,
+    depth: 1,
+  };
+  const updated = await storage.addReply(lessonId, reply);
+  return updated;
+};
+
+// --- Badges ---
+export const fetchBadges = () => storage.getBadges();
+export const saveBadges = (badges) => storage.saveBadges(badges);

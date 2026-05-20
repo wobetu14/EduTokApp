@@ -23,7 +23,7 @@ export const removeKey = async (key) => {
   await AsyncStorage.removeItem(key);
 };
 
-const SEED_VERSION = '4'; // bump when mockData schema changes
+const SEED_VERSION = '5'; // bump when mockData schema changes
 
 // --- Seed initial data if not present or version changed ---
 export const seedDataIfNeeded = async () => {
@@ -98,10 +98,27 @@ export const addComment = async (lessonId, comment) => {
   return lessonComments;
 };
 
+export const addReply = async (lessonId, reply) => {
+  const all = await getComments();
+  const lessonComments = all[lessonId] ?? [];
+  lessonComments.push(reply);
+  all[lessonId] = lessonComments;
+  await saveComments(all);
+  return lessonComments;
+};
+
 export const getCommentsForLesson = async (lessonId) => {
   const all = await getComments();
   return all[lessonId] ?? [];
 };
+
+// --- Badges ---
+export const getBadges = async () => {
+  const data = await getJSON(STORAGE_KEYS.badges);
+  return data ?? [];
+};
+
+export const saveBadges = (badges) => storeJSON(STORAGE_KEYS.badges, badges);
 
 // --- Clear everything (sign out) ---
 export const clearAllUserData = async () => {
@@ -110,5 +127,6 @@ export const clearAllUserData = async () => {
     STORAGE_KEYS.userProgress,
     STORAGE_KEYS.hasOnboarded,
     STORAGE_KEYS.comments,
+    STORAGE_KEYS.badges,
   ]);
 };

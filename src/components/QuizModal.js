@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
-  Animated,
   Image,
 } from 'react-native';
 import { useWindowDimensions } from 'react-native';
@@ -14,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES } from '../utils/constants';
 import { useTranslation } from '../utils/useTranslation';
+import { shuffle } from '../utils/helpers';
 
 const TrueFalseQuestion = ({ question, onAnswer, answered, selected }) => {
   const { t } = useTranslation();
@@ -86,6 +86,109 @@ const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
   </View>
 );
 
+const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
+  const { t } = useTranslation();
+  const shuffledLabels = useMemo(() => shuffle(question.pairs.map((p) => p.label)), [question.id]);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selections, setSelections] = useState({});
+  const [checked, setChecked] = useState(false);
+
+  const isComplete = question.pairs.every((p) => selections[p.id] != null);
+
+  const handleImageTap = (pairId) => {
+    if (checked) return;
+    setSelectedImage((prev) => (prev === pairId ? null : pairId));
+  };
+
+  const handleLabelTap = (label) => {
+    if (checked || !selectedImage) return;
+    setSelections((prev) => {
+      const next = { ...prev };
+      // Un-assign any pair that already has this label
+      Object.keys(next).forEach((k) => { if (next[k] === label) delete next[k]; });
+      next[selectedImage] = label;
+      return next;
+    });
+    setSelectedImage(null);
+  };
+
+  const handleCheck = () => {
+    setChecked(true);
+    const allCorrect = question.pairs.every((p) => selections[p.id] === p.label);
+    onComplete(allCorrect);
+  };
+
+  const usedLabels = new Set(Object.values(selections));
+
+  return (
+    <View style={styles.matchContainer}>
+      <Text style={styles.matchHint}>{t('selectImageFirst')}</Text>
+      <View style={styles.matchRow}>
+        {/* Images column */}
+        <View style={styles.matchCol}>
+          {question.pairs.map((p) => {
+            const isSel = selectedImage === p.id;
+            const isCorrect = checked && selections[p.id] === p.label;
+            const isWrong = checked && selections[p.id] !== p.label;
+            return (
+              <TouchableOpacity
+                key={p.id}
+                style={[
+                  styles.matchImageCard,
+                  isSel && styles.matchImageSelected,
+                  checked && isCorrect && styles.matchCorrect,
+                  checked && isWrong && styles.matchWrong,
+                ]}
+                onPress={() => handleImageTap(p.id)}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: p.imageUri }} style={styles.matchImage} />
+                {checked && (
+                  <View style={styles.matchCheck}>
+                    <Ionicons
+                      name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                      size={16}
+                      color={isCorrect ? COLORS.success : COLORS.error}
+                    />
+                  </View>
+                )}
+                {selections[p.id] && (
+                  <Text style={styles.matchAssigned} numberOfLines={1}>{selections[p.id]}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Labels column */}
+        <View style={styles.matchCol}>
+          {shuffledLabels.map((label) => {
+            const isUsed = usedLabels.has(label);
+            return (
+              <TouchableOpacity
+                key={label}
+                style={[styles.matchLabel, isUsed && styles.matchLabelUsed, checked && styles.matchLabelDone]}
+                onPress={() => handleLabelTap(label)}
+                disabled={checked}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.matchLabelText, isUsed && styles.matchLabelUsedText]} numberOfLines={2}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {!checked && isComplete && (
+        <TouchableOpacity style={styles.nextBtn} onPress={handleCheck}>
+          <Text style={styles.nextBtnText}>{t('checkMatches')}</Text>
+          <Ionicons name="checkmark-done" size={18} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 const QuizModal = ({ visible, quiz, onPass, onClose }) => {
   const { width: W } = useWindowDimensions();
   const { t } = useTranslation();
@@ -127,6 +230,15 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
       }
     },
     [question]
+  );
+
+  const handleMatchComplete = useCallback(
+    (isAllCorrect) => {
+      setSelected(isAllCorrect);
+      setAnswered(true);
+      if (isAllCorrect) setScore((s) => s + 1);
+    },
+    []
   );
 
   const handleNext = useCallback(() => {
@@ -243,9 +355,16 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                   selected={selected}
                 />
               )}
+              {question.type === 'imagematching' && (
+                <ImageMatchingQuestion
+                  question={question}
+                  answered={answered}
+                  onComplete={handleMatchComplete}
+                />
+              )}
 
-              {/* Feedback */}
-              {answered && (
+              {/* Feedback — skip for imagematching (it shows inline) */}
+              {answered && question.type !== 'imagematching' && (
                 <View style={[
                   styles.feedback,
                   selected === question.correctAnswer ? styles.feedbackCorrect : styles.feedbackWrong,
@@ -475,6 +594,46 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   retryBtnText: { color: COLORS.text, fontWeight: '700', fontSize: SIZES.base },
+  // Image Matching
+  matchContainer: { paddingTop: 4, gap: 12 },
+  matchHint: { color: COLORS.textMuted, fontSize: SIZES.xs, textAlign: 'center', marginBottom: 4 },
+  matchRow: { flexDirection: 'row', gap: 12 },
+  matchCol: { flex: 1, gap: 10 },
+  matchImageCard: {
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  matchImageSelected: { borderColor: COLORS.secondary },
+  matchCorrect: { borderColor: COLORS.success },
+  matchWrong: { borderColor: COLORS.error },
+  matchImage: { width: '100%', height: 72 },
+  matchCheck: { position: 'absolute', top: 4, right: 4 },
+  matchAssigned: {
+    backgroundColor: COLORS.secondary + 'DD',
+    color: '#000',
+    fontSize: SIZES.xs,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    textAlign: 'center',
+  },
+  matchLabel: {
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    minHeight: 72,
+    justifyContent: 'center',
+  },
+  matchLabelUsed: { backgroundColor: COLORS.secondary + '22', borderColor: COLORS.secondary + '55' },
+  matchLabelDone: { opacity: 0.7 },
+  matchLabelText: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '600', textAlign: 'center' },
+  matchLabelUsedText: { color: COLORS.secondary },
 });
 
 export default QuizModal;

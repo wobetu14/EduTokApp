@@ -430,8 +430,29 @@ Think of HTML as the bones of a building — it gives structure but not style.`,
       { uri: 'https://picsum.photos/seed/cssbox3/600/900', caption: 'Use box-sizing: border-box so padding & border don\'t increase the element\'s total size.' },
     ],
     140,
-    false,
-    null
+    true,
+    {
+      id: 'q_css_match',
+      lessonId: 'l6',
+      questions: [
+        {
+          id: 'q_css_match_a',
+          type: 'imagematching',
+          text: 'Match each visual to the correct CSS concept.',
+          pairs: [
+            { id: 'p1', imageUri: 'https://picsum.photos/seed/cssbox1/200/200', label: 'Box Model' },
+            { id: 'p2', imageUri: 'https://picsum.photos/seed/cssbox2/200/200', label: 'Padding & Margin' },
+            { id: 'p3', imageUri: 'https://picsum.photos/seed/cssbox3/200/200', label: 'Border Box' },
+          ],
+        },
+        {
+          id: 'q_css_tf',
+          type: 'truefalse',
+          text: 'CSS stands for Cascading Style Sheets.',
+          correctAnswer: true,
+        },
+      ],
+    }
   ),
 
   makeVideoLesson('l7', 'course2', 3, 'JavaScript: Adding Interactivity', DEMO_VIDEO, 170,
