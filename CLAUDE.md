@@ -185,5 +185,44 @@ Authentication, onboarding, For You tab (TikTok-style full-screen lesson feed), 
 - Push notifications via `expo-notifications` (`src/services/notificationService.js`): lesson completion, quiz pass, course enrollment, daily reminder at 7 PM; no-ops on web; respects `user.notificationsEnabled`
 - Enrollment toast (`src/components/Toast.js` + `src/context/ToastContext.js`): animated pill shown on course enroll from CourseProfileScreen, ForYouScreen, and LessonPlaybackScreen
 
-### Phase 2 — Planned
-Full comment threads with nested replies, organization directory tab, achievements/badges system, video upload 3-minute enforcement, advanced analytics, daily streak celebrations, profile customization, offline video download, high-contrast/accessibility modes.
+### Phase 2 — Implemented
+
+**Achievements & Badges** (`src/utils/constants.js` → `BADGE_DEFS`, `src/context/CourseContext.js`, `src/services/storageService.js`)
+- 6 milestone badges: First Lesson, Week Warrior (7-day streak), Quiz Master (10 quizzes), Century Club (100 lessons), Explorer (5 categories), Course Graduate (full course)
+- Badge check runs automatically after `completeLesson` and `recordQuizPass`; newly earned badges persisted to `@edutok_badges`
+- Badges tab in ProfileScreen: 3-column grid, locked (30 % opacity + lock icon) vs earned, tap-to-detail modal with earn date
+
+**Streak Celebrations** (`src/components/StreakCelebration.js`, `src/context/CourseContext.js`)
+- `StreakCelebration` modal with 24-particle confetti animation built with `Animated.stagger` + `useNativeDriver` — no new packages
+- Fires when streak hits milestones 3, 7, 14, or 30 days via `streakMilestone` signal in `CourseContext`; displayed from `ForYouScreen`
+- Dismiss via "Keep Going!" button or auto-dismisses after 3 s
+
+**Profile Customization** (`src/screens/ProfileScreen.js`, `src/utils/constants.js` → `PRESET_AVATARS`)
+- Avatar picker inside Edit Profile modal: 12 preset circular photos from `PRESET_AVATARS`; tap to select, saved via `updateUser({ avatar })`
+- `editForm` now includes `avatar` field alongside `fullName` and `bio`
+
+**Advanced Analytics tab** (`src/screens/ProfileScreen.js`)
+- Stats tab on Profile: weekly activity bar chart (last 6 months, pure `View` bars scaled to max-week), per-course completion breakdown with done/total lesson counts, quiz history list with score and timestamp
+
+**Nested Comment Replies** (`src/components/CommentThread.js`, `src/services/apiService.js`, `src/services/storageService.js`)
+- Comments stored flat with `parentId` (null = top-level) and `depth` (0 or 1); tree built client-side via `useMemo`
+- Reply button per comment; `replyingTo` banner shows above input when replying; cancel resets to top-level post
+- Replies collapsible under parent with red accent border; `postReply` added to apiService/storageService
+
+**Image Matching Quiz** (`src/components/QuizModal.js`, `src/services/mockData.js`)
+- `ImageMatchingQuestion` component: two-column layout — images left, shuffled labels right
+- Tap an image to select (highlighted), tap a label to assign; "Check Matches" reveals inline correct/wrong per pair
+- Scoring: 1 point if all pairs correct, 0 otherwise; wired into existing `handleAnswer` flow via `handleMatchComplete`
+- CSS lesson (`l6`) now has an `imagematching` quiz; `SEED_VERSION` bumped to `5`
+
+**Accessibility** (`src/context/AccessibilityContext.js`, `src/utils/constants.js`)
+- `AccessibilityContext` with `fontScale` (`sm` | `md` | `lg`) and `highContrast` (bool), both persisted to `@edutok_a11y`
+- `HIGH_CONTRAST_COLORS` and `FONT_SCALE_MAP` exported from `constants.js`; `useA11y()` hook exposes `C` (color palette) and `fs(size)` (scaled font size)
+- Font size segmented control (A / A / A) and high contrast `Switch` added to ProfileScreen settings
+- `AccessibilityProvider` wraps the app root in `App.js`
+
+**i18n additions** (`src/utils/i18n.js`)
+- 35+ new keys in EN and AM for badges, streak, avatar picker, analytics, replies, image matching, and accessibility settings
+
+### Phase 3 — Planned
+Organization directory tab (standalone), video upload 3-minute enforcement, offline video download, advanced notification scheduling (smart timing per user timezone), full-screen confetti on course completion, deep-link sharing, profile follower/following social graph.
