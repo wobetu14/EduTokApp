@@ -111,7 +111,7 @@ const LessonSlide = ({
     switch (lesson.type) {
       case 'video': return <VideoContent key={lesson.id} lesson={lesson} active={active} onProgress={onVideoProgress} />;
       case 'image': return <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideHeight} />;
-      default:      return <AppTextContent key={lesson.id} lesson={lesson} />;
+      default:      return <TextContent key={lesson.id} lesson={lesson} />;
     }
   };
 

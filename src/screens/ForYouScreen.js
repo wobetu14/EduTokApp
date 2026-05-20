@@ -339,7 +339,7 @@ const ForYouScreen = ({ navigation }) => {
           {lesson.type === 'image' && (
             <ImageContent key={lesson.id} lesson={lesson} slideWidth={slideWidth} slideHeight={slideH} />
           )}
-          {lesson.type === 'text' && <AppTextContent key={lesson.id} lesson={lesson} />}
+          {lesson.type === 'text' && <TextContent key={lesson.id} lesson={lesson} />}
 
           {/* Top gradient */}
           <LinearGradient
