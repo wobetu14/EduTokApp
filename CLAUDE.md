@@ -182,6 +182,8 @@ Authentication, onboarding, For You tab (TikTok-style full-screen lesson feed), 
 - Video watch progress bar (red, bottom edge, real-time from YouTube player)
 - Engagement buttons show numeric counts for all four actions (likes, saves, comments, shares); no text labels
 - `SEED_VERSION` auto-reseed mechanism in `storageService.js`
+- Push notifications via `expo-notifications` (`src/services/notificationService.js`): lesson completion, quiz pass, course enrollment, daily reminder at 7 PM; no-ops on web; respects `user.notificationsEnabled`
+- Enrollment toast (`src/components/Toast.js` + `src/context/ToastContext.js`): animated pill shown on course enroll from CourseProfileScreen, ForYouScreen, and LessonPlaybackScreen
 
 ### Phase 2 — Planned
-Full comment threads with nested replies, organization directory tab, achievements/badges system, video upload 3-minute enforcement, advanced analytics, daily streak celebrations, profile customization, offline video download, push notifications, high-contrast/accessibility modes.
+Full comment threads with nested replies, organization directory tab, achievements/badges system, video upload 3-minute enforcement, advanced analytics, daily streak celebrations, profile customization, offline video download, high-contrast/accessibility modes.
