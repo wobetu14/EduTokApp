@@ -57,7 +57,7 @@ Two `useReducer`-backed React Context providers — no Redux or Zustand:
 
 ### Data / Backend Layer
 
-The app runs entirely on-device with **AsyncStorage** — no remote backend. `apiService.js` is designed to be swapped for real HTTP calls without changing call sites.
+The app currently runs entirely on-device with **AsyncStorage** — a real backend API is in active development (see Backend API section below). `apiService.js` is the designed swap point: replace the AsyncStorage calls with real HTTP calls without touching any context or screen code.
 
 - `src/services/storageService.js` — AsyncStorage wrapper; seeds `mockData.js` on launch if `SEED_VERSION` has changed
 - `src/services/apiService.js` — abstraction layer with 300–400ms artificial delays; contexts only call this, never AsyncStorage directly
@@ -224,5 +224,83 @@ Authentication, onboarding, For You tab (TikTok-style full-screen lesson feed), 
 **i18n additions** (`src/utils/i18n.js`)
 - 35+ new keys in EN and AM for badges, streak, avatar picker, analytics, replies, image matching, and accessibility settings
 
-### Phase 3 — Planned
+### Phase 3 — Planned (Mobile)
 Organization directory tab (standalone), video upload 3-minute enforcement, offline video download, advanced notification scheduling (smart timing per user timezone), full-screen confetti on course completion, deep-link sharing, profile follower/following social graph.
+
+---
+
+## Backend API
+
+A separate Node.js/Express REST API is being developed in parallel at `../edutok-api/` (sibling directory to this mobile app). It will replace the AsyncStorage mock layer entirely.
+
+**Full architecture plan:** `docs/backend-plan.md`
+
+### Stack
+- **Runtime / Framework:** Node.js + Express + TypeScript
+- **Database:** MySQL via Prisma ORM
+- **Auth:** JWT (access 15 min + refresh 7 d, rotation) + bcryptjs
+- **Object storage:** Cloudinary (avatars, thumbnails, lesson images, org logos)
+- **Validation:** zod | **Email:** nodemailer | **SMS:** pluggable stub (replace with Twilio / Africa's Talking)
+
+### Roles
+`super_admin` → `org_admin` → `instructor` → `learner`
+
+### 2FA rules
+| Role | 2FA channel |
+|---|---|
+| `learner` | Phone OTP only (enforced server-side) |
+| `org_admin` / `instructor` / `super_admin` | Phone OTP **or** Email OTP (user's choice) |
+
+Learner `email` field exists and is stored but is never used for authentication or 2FA.
+
+### Database — 33 tables (Phase 1 + Phase 2)
+
+**Phase 1 (29):** `users`, `refresh_tokens`, `password_reset_tokens`, `phone_verifications`, `email_verifications`, `organizations`, `org_members`, `courses`, `lessons`, `quizzes`, `enrollments`, `lesson_completions`, `quiz_passes`, `video_watch_progress`, `streaks`, `lesson_likes`, `lesson_saves`, `comments`, `comment_likes`, `share_events`, `badges`, `certificates`, `instructor_follows`, `user_preferences`, `user_settings`, `device_tokens`, `notification_logs`, `media_uploads`, `categories`, `search_history`
+
+**Phase 2 additions (4):** `course_approvals`, `content_reports`, `audit_logs`, `announcements`
+
+### API modules (build order)
+```
+✅ 1.  Project scaffold — Express, Prisma, middleware, utils
+✅ 2.  Auth module — register, login, refresh, logout, phone OTP,
+                     email OTP, 2FA challenge flow, forgot/reset password
+✅ 3.  Users module — own profile, settings, preferences, 2FA mgmt,
+                     public profile, follow/unfollow (social), admin CRUD
+✅ 4.  Organizations module — CRUD, membership management
+✅ 5.  Courses module — CRUD, submit/approve/reject workflow, enrollment
+✅ 6.  Lessons + Quizzes module — CRUD, reorder, quiz grading, video progress
+✅ 7.  Engagement module — likes, saves, comments (nested), shares
+✅ 8.  Progress module — streaks, badges (6 types), certificates, analytics
+✅ 9.  Notifications module — device tokens, push dispatch (Expo), in-app log
+✅ 10. Media module — Cloudinary upload (avatar/thumbnail/image/logo), delete
+✅ 11. Search module — full-text courses/lessons/orgs, history, categories
+✅ 12. Admin module — stats, user mgmt, course review, reports, audit log,
+                     announcements (Phase 2 models: course_approvals,
+                     content_reports, audit_logs, announcements)
+```
+
+**Backend is feature-complete.** All 12 modules pass `npx tsc --noEmit` with zero errors.
+
+### Mobile integration point
+When wiring the mobile app to the backend, only `src/services/apiService.js` needs to change:
+- Replace AsyncStorage calls with `fetch`/`axios` to `BASE_URL/api/*`
+- Add `Authorization: Bearer <token>` header from `AuthContext`
+- Map response shapes to existing context state — no screen or context changes required
+
+### Backend dev commands
+```bash
+cd ../edutok-api
+
+npm run dev          # start with ts-node-dev hot reload (port 3000)
+npm run db:migrate   # run Prisma migrations
+npm run db:seed      # seed categories, super_admin, 3 orgs, 3 instructors, sample course
+npm run db:studio    # open Prisma Studio
+npx tsc --noEmit     # type-check without building
+```
+
+### Key cross-module patterns
+- **`logAudit`** exported from `admin.service.ts` — call from any module to write to `audit_logs`
+- **`sendPush`** exported from `notifications.service.ts` — fire-and-forget push + notification log
+- **`updateStreak` / `checkLessonBadges` / `checkQuizBadges`** in `src/utils/gamification.ts` — called from lessons/quizzes service after first completion
+- **Route ordering rule**: literal paths (`/me`, `/reorder`, `/categories`, `/read-all`) always declared before `/:id` params in every router
+- **Prisma `$transaction`**: used for all counter increments/decrements and multi-table writes that must be atomic
