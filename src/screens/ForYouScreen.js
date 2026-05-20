@@ -31,6 +31,8 @@ import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
+import { useToast } from '../context/ToastContext';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -126,6 +128,7 @@ const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label })
 const ForYouScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const {
     visibleCourses: courses, lessons, organizations, isLoading,
     isLiked, isFavorited, isEnrolled, isQuizPassed,
@@ -217,6 +220,9 @@ const ForYouScreen = ({ navigation }) => {
     setVideoProgress(0);
     if (lesson && course) {
       completeLesson(lesson.id, course.id, lesson.duration);
+      if (user?.notificationsEnabled !== false) {
+        scheduleLessonCompleteNotification(lesson.title);
+      }
     }
   }, [currentIndex]);
 
@@ -268,13 +274,16 @@ const ForYouScreen = ({ navigation }) => {
   const handleQuizPass = useCallback(
     async (quizId, score) => {
       await recordQuizPass(quizId, lesson.id, score);
+      if (user?.notificationsEnabled !== false) {
+        scheduleQuizPassNotification(score);
+      }
       setShowQuiz(false);
       if (pendingNext) {
         setPendingNext(false);
         animateToNext();
       }
     },
-    [recordQuizPass, lesson, pendingNext, animateToNext]
+    [recordQuizPass, lesson, pendingNext, animateToNext, user]
   );
 
   const handleShare = useCallback(async () => {
@@ -416,7 +425,13 @@ const ForYouScreen = ({ navigation }) => {
             ) : (
               <TouchableOpacity
                 style={styles.enrollBtn}
-                onPress={() => enroll(course.id)}
+                onPress={async () => {
+                  await enroll(course.id);
+                  showToast(t('enrolledToast'));
+                  if (user?.notificationsEnabled !== false) {
+                    scheduleEnrollmentNotification(course.title);
+                  }
+                }}
                 activeOpacity={0.85}
               >
                 <Ionicons name="add" size={26} color="#fff" />

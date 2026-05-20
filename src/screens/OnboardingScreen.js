@@ -14,6 +14,7 @@ import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import { requestPermissions, scheduleDailyReminder } from '../services/notificationService';
 
 const STEPS = ['welcome', 'interests', 'permissions'];
 
@@ -150,6 +151,8 @@ const OnboardingScreen = () => {
   const nextStep = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
 
   const finish = async () => {
+    const granted = await requestPermissions();
+    if (granted) await scheduleDailyReminder();
     await completeOnboarding(selectedCategories);
   };
 

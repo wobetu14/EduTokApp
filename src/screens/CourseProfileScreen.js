@@ -20,11 +20,14 @@ import { useAuth } from '../context/AuthContext';
 import { formatLargeNumber, formatMinutes } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import { useToast } from '../context/ToastContext';
+import { scheduleEnrollmentNotification } from '../services/notificationService';
 
 const CourseProfileScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
   const { heroH, lessonCardW, hPad } = useResponsive();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const {
     courses,
     organizations,
@@ -67,6 +70,10 @@ const CourseProfileScreen = ({ route, navigation }) => {
 
   const handleEnroll = async () => {
     await enroll(courseId);
+    showToast(t('enrolledToast'));
+    if (user?.notificationsEnabled !== false) {
+      scheduleEnrollmentNotification(course.title);
+    }
   };
 
   const handleLessonPress = (lesson, index) => {

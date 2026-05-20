@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useReducer, useCallback } 
 import * as storage from '../services/storageService';
 import * as api from '../services/apiService';
 import { setLanguage } from '../utils/i18n';
+import { scheduleDailyReminder, getPermissionStatus } from '../services/notificationService';
 
 const AuthContext = createContext(null);
 
@@ -57,6 +58,10 @@ export const AuthProvider = ({ children }) => {
     const user = await api.signIn(username, password);
     if (user?.language) setLanguage(user.language);
     dispatch({ type: 'SIGN_IN', user });
+    if (user?.notificationsEnabled !== false) {
+      const status = await getPermissionStatus();
+      if (status === 'granted') scheduleDailyReminder();
+    }
     return user;
   }, []);
 

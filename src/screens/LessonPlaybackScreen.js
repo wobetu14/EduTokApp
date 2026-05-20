@@ -31,6 +31,8 @@ import { useCourses } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
+import { useToast } from '../context/ToastContext';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -190,6 +192,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const { W, H, commentsH } = useResponsive();
   const {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
@@ -228,6 +231,9 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     setVideoProgress(0);
     if (lesson && user) {
       completeLesson(lesson.id, courseId, lesson.duration);
+      if (user?.notificationsEnabled !== false) {
+        scheduleLessonCompleteNotification(lesson.title);
+      }
     }
   }, [currentIndex]);
 
@@ -310,12 +316,15 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
 
   const handleQuizPass = useCallback(async (quizId, score) => {
     await recordQuizPass(quizId, lesson.id, score);
+    if (user?.notificationsEnabled !== false) {
+      scheduleQuizPassNotification(score);
+    }
     setShowQuiz(false);
     if (pendingNext) {
       setPendingNext(false);
       animateToNext();
     }
-  }, [recordQuizPass, lesson, pendingNext, animateToNext]);
+  }, [recordQuizPass, lesson, pendingNext, animateToNext, user]);
 
   const handleShare = useCallback(async () => {
     if (!lesson || !course) return;
@@ -358,7 +367,13 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             onFavorite={() => toggleFavorite(lesson.id)}
             onComment={() => setShowComments(true)}
             onShare={handleShare}
-            onEnroll={() => enroll(courseId)}
+            onEnroll={async () => {
+              await enroll(courseId);
+              showToast(t('enrolledToast'));
+              if (user?.notificationsEnabled !== false) {
+                scheduleEnrollmentNotification(course?.title || '');
+              }
+            }}
             commentCount={0}
             courseTitle={course?.title || ''}
             lessonIndex={currentIndex}

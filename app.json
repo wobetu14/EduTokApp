@@ -20,6 +20,12 @@
         {
           "microphonePermission": "Allow EduTok to access your microphone."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FE2C55"
+        }
       ]
     ]
   }

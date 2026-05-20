@@ -21,6 +21,7 @@ import { useCourses } from '../context/CourseContext';
 import { formatTimeAgo } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
+import { scheduleDailyReminder, cancelDailyReminder, requestPermissions } from '../services/notificationService';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
@@ -324,7 +325,15 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.settingLabel}>{t('notifications')}</Text>
           <Switch
             value={user?.notificationsEnabled ?? true}
-            onValueChange={(val) => updateUser({ notificationsEnabled: val })}
+            onValueChange={async (val) => {
+              await updateUser({ notificationsEnabled: val });
+              if (val) {
+                const granted = await requestPermissions();
+                if (granted) await scheduleDailyReminder();
+              } else {
+                await cancelDailyReminder();
+              }
+            }}
             trackColor={{ false: COLORS.border, true: COLORS.primary }}
             thumbColor="#fff"
           />
