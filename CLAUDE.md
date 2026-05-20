@@ -235,6 +235,8 @@ A separate Node.js/Express REST API is being developed in parallel at `../edutok
 
 **Full architecture plan:** `docs/backend-plan.md`
 
+**Git remote:** `https://github.com/wobetu14/edutok-api.git` (branch: `master`)
+
 ### Stack
 - **Runtime / Framework:** Node.js + Express + TypeScript
 - **Database:** MySQL via Prisma ORM
