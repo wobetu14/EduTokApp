@@ -227,10 +227,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const goToPrevRef = useRef(null);
   const currentLessonTypeRef = useRef(null);
 
+  const enrolled = isEnrolled(courseId);
+
   // Mark lesson complete and reset video progress when lesson changes
   useEffect(() => {
     setVideoProgress(0);
-    if (lesson && user) {
+    if (lesson && user && enrolled) {
       completeLesson(lesson.id, courseId, lesson.duration);
       if (user?.notificationsEnabled !== false) {
         scheduleLessonCompleteNotification(lesson.title);

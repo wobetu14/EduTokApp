@@ -89,7 +89,7 @@ Layout mirrors TikTok:
 - Right column: `+` enroll button (hidden if enrolled), Like, Save, Chat, Share
 - Top-right: feed position counter (e.g. "4 / 28")
 
-Quiz gate fires before advancing when `lesson.hasQuiz && !isQuizPassed(lesson.quiz.id)`. Share uses React Native's `Share.share()`.
+**Quiz gate and completion are enrollment-aware:** `completeLesson` is only called when `isEnrolled(course.id)` is true. The quiz gate (`tryGoNext`) only fires when enrolled — unenrolled users can swipe freely through the discovery feed without being blocked. Share uses React Native's `Share.share()`.
 
 **PanResponder stale-closure pattern** (used here and in LessonPlayback): create the responder once with `useRef(PanResponder.create(...)).current`, then keep mutable refs (`tryGoNextRef`, `animateToPrevRef`, `currentIndexRef`) updated every render. The panResponder callbacks read from refs, never from stale closures.
 
@@ -115,7 +115,7 @@ User dashboard with:
 - Header: title, organization name, thumbnail
 - Masonry grid of lesson thumbnails with type icon, duration, and completion status
 - One-tap enrollment "+" button (TikTok follow pattern)
-- Tap lesson thumbnail → `LessonPlaybackScreen`
+- Tap lesson thumbnail → **enrollment is enforced first**: if not enrolled, `handleEnroll()` runs automatically (shows toast + schedules notification), then navigates to `LessonPlaybackScreen`. This ensures the full course experience always starts from an enrolled state.
 
 ### Lesson Playback (`LessonPlaybackScreen`)
 Full-screen immersive view — plays lessons from a single course sequentially (accessed from `CourseProfileScreen`).
@@ -125,7 +125,7 @@ Full-screen immersive view — plays lessons from a single course sequentially (
 - Bottom-left: course title + "Lesson X of Y" + progress dots
 - Right-side engagement stack: Like, Save, Comment, Share — all via `EngagementButtons` (counts shown, no labels)
 - Share uses `Share.share()` from React Native
-- Marks lesson completed on view (`completeLesson` called in `useEffect` on `currentIndex` change)
+- Marks lesson completed on view (`completeLesson` called in `useEffect` on `currentIndex` change, guarded by `isEnrolled(courseId)` — no phantom completions if screen is somehow entered unenrolled)
 - Video pauses during transitions via `videoActive` state; watch progress bar shown at bottom for video lessons
 
 ### Organization Profile (`OrganizationProfileScreen`)
@@ -255,6 +255,19 @@ A separate Node.js/Express REST API is being developed in parallel at `../edutok
 
 Learner `email` field exists and is stored but is never used for authentication or 2FA.
 
+### Account lifecycle for managed accounts
+- Only `super_admin` can create organizations (`POST /api/organizations`).
+- `super_admin` creates `org_admin` or `instructor` accounts; `org_admin` creates `instructor` accounts via `POST /api/users/managed`. A 12-character temp password is generated, returned **once** in the response (never stored in plaintext), and the `must_change_password` flag is set to `true`.
+- On first login the API returns `must_change_password: true`. The client must call `POST /api/auth/change-password-first-login` before any other action; that endpoint revokes all existing sessions and issues fresh tokens.
+- `PATCH /api/users/:id/active` activates or deactivates a user. Deactivation immediately revokes all refresh tokens. `org_admin` can only deactivate instructors within their own org.
+- `PATCH /api/users/me/password` — standard self-service password change; verifies current password, clears `must_change_password`, revokes all sessions.
+
+### Schema additions (post-initial-build)
+- `users`: added `is_active Boolean @default(true)` and `must_change_password Boolean @default(false)`
+- `audit_logs`: added `ip_address String?` and `user_agent String?`
+- `announcements`: added `target_role String?` (filters delivery by caller role)
+- `course_approvals`: redesigned — `submitted_by`/`submitted_at` tracked at submit time; `reviewer_id`/`reviewed_at` nullable until review; named Prisma relations `"CourseApprovalSubmitter"` and `"CourseApprovalReviewer"` on `User`
+
 ### Database — 33 tables (Phase 1 + Phase 2)
 
 **Phase 1 (29):** `users`, `refresh_tokens`, `password_reset_tokens`, `phone_verifications`, `email_verifications`, `organizations`, `org_members`, `courses`, `lessons`, `quizzes`, `enrollments`, `lesson_completions`, `quiz_passes`, `video_watch_progress`, `streaks`, `lesson_likes`, `lesson_saves`, `comments`, `comment_likes`, `share_events`, `badges`, `certificates`, `instructor_follows`, `user_preferences`, `user_settings`, `device_tokens`, `notification_logs`, `media_uploads`, `categories`, `search_history`
@@ -300,9 +313,21 @@ npm run db:studio    # open Prisma Studio
 npx tsc --noEmit     # type-check without building
 ```
 
+### Course visibility access rules
+| Course status + visibility | Who can view / access lessons |
+|---|---|
+| `approved + public` | Anyone (no auth needed for `GET /courses/:id`); any authenticated user can view lessons via `GET /lessons/:id` without enrollment |
+| `approved + unlisted` | Any authenticated user with the link; any authenticated user can view lessons without enrollment |
+| `approved + private` | Staff only (instructor, org_admin of the org, super_admin); learners must be enrolled |
+| Any non-approved status | Staff only regardless of visibility |
+| Enrollment | Allowed for `approved + public` or `approved + unlisted`; blocked for `private` or non-approved |
+
+`completeLesson` and quiz submission **always** require enrollment regardless of course visibility.
+
 ### Key cross-module patterns
-- **`logAudit`** exported from `admin.service.ts` — call from any module to write to `audit_logs`
+- **`logAudit`** exported from `admin.service.ts` — accepts optional `ctx?: { ip_address?: string; user_agent?: string }` for audit trail; call from any module
 - **`sendPush`** exported from `notifications.service.ts` — fire-and-forget push + notification log
 - **`updateStreak` / `checkLessonBadges` / `checkQuizBadges`** in `src/utils/gamification.ts` — called from lessons/quizzes service after first completion
-- **Route ordering rule**: literal paths (`/me`, `/reorder`, `/categories`, `/read-all`) always declared before `/:id` params in every router
+- **Route ordering rule**: literal paths (`/me`, `/managed`, `/mine`, `/reorder`, `/categories`, `/read-all`, `/org-stats`) always declared before `/:id` params in every router
 - **Prisma `$transaction`**: used for all counter increments/decrements and multi-table writes that must be atomic
+- **Org isolation for org_admin**: `listMembers` and admin `listPendingCourses`/`reviewCourse` filter to orgs the caller belongs to; super_admin sees everything

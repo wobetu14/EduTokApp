@@ -218,10 +218,11 @@ const ForYouScreen = ({ navigation }) => {
   const lesson = current?.lesson;
   const course = current?.course;
 
-  // Mark lesson complete and reset video progress when lesson changes
+  // Mark lesson complete and reset video progress when lesson changes.
+  // In the discovery feed, completion is only tracked for enrolled courses.
   useEffect(() => {
     setVideoProgress(0);
-    if (lesson && course) {
+    if (lesson && course && isEnrolled(course.id)) {
       completeLesson(lesson.id, course.id, lesson.duration);
       if (user?.notificationsEnabled !== false) {
         scheduleLessonCompleteNotification(lesson.title);
@@ -257,7 +258,8 @@ const ForYouScreen = ({ navigation }) => {
 
   const tryGoNext = useCallback(() => {
     if (!lesson) return;
-    if (lesson.hasQuiz && !isQuizPassed(lesson.quiz?.id)) {
+    // Quiz gate only fires when enrolled — discovery feed viewers can scroll freely
+    if (lesson.hasQuiz && isEnrolled(course?.id) && !isQuizPassed(lesson.quiz?.id)) {
       setPendingNext(true);
       setShowQuiz(true);
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -266,7 +268,7 @@ const ForYouScreen = ({ navigation }) => {
     } else {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
     }
-  }, [lesson, isQuizPassed, currentIndex, feed.length, animateToNext, translateY]);
+  }, [lesson, course, isEnrolled, isQuizPassed, currentIndex, feed.length, animateToNext, translateY]);
 
   // Update refs on every render so panResponder always calls latest version
   currentIndexRef.current = currentIndex;

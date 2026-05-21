@@ -75,6 +75,9 @@ users
   two_fa_method,                  -- phone | email | none
                                   -- learners: always 'phone' (enforced server-side)
                                   -- non-learners: 'phone' or 'email', user's choice
+  -- account lifecycle
+  is_active,                      -- bool; default true; deactivation revokes all refresh tokens
+  must_change_password,           -- bool; default false; set true for managed account creation
   -- other
   lang_pref (en | am), notifications_enabled, created_at, updated_at
 
@@ -290,9 +293,15 @@ search_history
 
 ```
 course_approvals
-  id, course_id → courses, submitted_by → users,
-  reviewed_by → users, status (pending | approved | rejected),
-  review_notes, submitted_at, reviewed_at
+  id, course_id → courses,
+  submitted_by → users (nullable, set at submission time),
+  submitted_at (nullable, set at submission time),
+  reviewer_id → users (nullable, set at review time),
+  reviewed_at (nullable, set at review time),
+  status (pending | approved | rejected),   -- default: pending
+  notes,
+  created_at
+  -- Named Prisma relations: "CourseApprovalSubmitter" and "CourseApprovalReviewer" on User
 
 content_reports
   id, reporter_id → users,
@@ -303,10 +312,12 @@ content_reports
 audit_logs
   id, actor_id → users, action,
   resource_type, resource_id, metadata_json,
-  ip_address, user_agent, created_at
+  ip_address (nullable), user_agent (nullable),   -- captured from request context
+  created_at
 
 announcements
-  id, title, body, target_role (all | learner | instructor | org_admin),
+  id, title, body,
+  target_role (nullable String),   -- null = all roles; set to specific role slug to filter delivery
   created_by → users, published_at, expires_at
 ```
 
@@ -408,3 +419,54 @@ The mobile app (`src/services/apiService.js`) is already structured as a drop-in
 - Streak logic: compare `last_active_date` on each lesson completion; reset if gap > 1 day
 - Certificate `certificate_number` is generated as `EDUTOK-` + 10-char uppercase random alphanumeric; verify endpoint at `/verify/:certificateNumber` is public
 - `instructor_follows` enables `followersCount` on `AuthorProfileScreen` — Phase 3 can expand this to a full social graph
+
+---
+
+## Account Lifecycle — Managed Accounts
+
+Users created by admins (not self-registered) follow a forced-reset flow:
+
+1. Admin calls `POST /api/users/managed` — generates a 12-char temp password from a safe alphanumeric charset, sets `must_change_password = true`, creates org membership automatically. Response returns `{ user, tempPassword }` — shown once, never stored in plaintext.
+2. On first login the response includes `must_change_password: true` regardless of whether 2FA is used.
+3. Client must call `POST /api/auth/change-password-first-login` (requires Bearer token). Server verifies `must_change_password === true`, hashes new password, clears the flag, revokes all existing refresh tokens, issues fresh tokens.
+4. Deactivation: `PATCH /api/users/:id/active` with `{ is_active: false }` immediately revokes all refresh tokens. Subsequent logins return 403. `org_admin` can only deactivate instructors within their own org; `super_admin` can deactivate anyone.
+
+---
+
+## Org Isolation Rules
+
+- **Creating organizations:** `super_admin` only (`POST /api/organizations`). `org_admin` cannot create new orgs.
+- **Listing org members:** `org_admin` can only list members of orgs they belong to. `super_admin` can list any org's members.
+- **Pending course review:** Admin `GET /api/admin/courses/pending` — `org_admin` receives only courses from their own orgs; `super_admin` sees all.
+- **Course approval/rejection:** Admin `PATCH /api/admin/courses/:id/review` — `org_admin` can only review courses within their own orgs.
+- **Org-scoped analytics:** `GET /api/admin/org-stats?org_id=` — available to `super_admin` (any org) and `org_admin` (their own orgs only).
+
+---
+
+## Course Visibility & Lesson Access Policy
+
+| Course state | `GET /courses/:id` | `GET /lessons/:id` | Enrollment |
+|---|---|---|---|
+| `approved + public` | Anyone (no auth) | Any authenticated user, no enrollment needed | Allowed |
+| `approved + unlisted` | Any authenticated user | Any authenticated user, no enrollment needed | Allowed |
+| `approved + private` | Staff only¹ | Enrollment required for learners | Blocked |
+| Any non-approved | Staff only¹ | Enrollment required for learners | Blocked |
+
+¹ Staff = course instructor, org_admin of the same org, super_admin.
+
+`POST /lessons/:id/complete` and quiz submission always require enrollment regardless of visibility.
+
+**Mobile feed behaviour:** `ForYouScreen` (discovery) shows one lesson per course. Unenrolled users can view and scroll freely — no quiz gate, no completion tracking. Enrollment is enforced at the `CourseProfileScreen → LessonPlaybackScreen` boundary: tapping a lesson auto-enrolls then navigates.
+
+---
+
+## Additional Endpoints (post-initial build)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/change-password-first-login` | Bearer | Mandatory first-login reset; clears `must_change_password`, revokes sessions |
+| `POST` | `/api/users/managed` | super_admin / org_admin | Create managed instructor/org_admin account; returns temp password once |
+| `PATCH` | `/api/users/:id/active` | super_admin / org_admin | Activate or deactivate user; revokes sessions on deactivation |
+| `PATCH` | `/api/users/me/password` | Bearer | Self-service password change; revokes sessions |
+| `GET` | `/api/courses/mine` | instructor / org_admin / super_admin | All own courses (all statuses + visibilities) |
+| `GET` | `/api/admin/org-stats` | super_admin / org_admin | Org-scoped analytics |

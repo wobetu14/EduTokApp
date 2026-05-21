@@ -77,7 +77,10 @@ const CourseProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleLessonPress = (lesson, index) => {
+  const handleLessonPress = async (lesson, index) => {
+    if (!enrolled) {
+      await handleEnroll();
+    }
     navigation.navigate('LessonPlayback', {
       courseId,
       lessonId: lesson.id,
