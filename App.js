@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { CourseProvider } from './src/context/CourseContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { AccessibilityProvider } from './src/context/AccessibilityContext';
+import { TabBarProvider } from './src/context/TabBarContext';
 import TabNavigator from './src/navigation/TabNavigator';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -42,11 +43,13 @@ const AppInner = () => {
 
   return (
     <CourseProvider>
-      <NavigationContainer theme={darkTheme}>
-        <ToastProvider>
-          <TabNavigator />
-        </ToastProvider>
-      </NavigationContainer>
+      <TabBarProvider>
+        <NavigationContainer theme={darkTheme}>
+          <ToastProvider>
+            <TabNavigator />
+          </ToastProvider>
+        </NavigationContainer>
+      </TabBarProvider>
     </CourseProvider>
   );
 };
@@ -54,7 +57,7 @@ const AppInner = () => {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <AccessibilityProvider>
         <AuthProvider>
           <AppInner />

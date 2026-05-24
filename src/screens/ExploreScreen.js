@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,9 @@ import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import AppText from '../components/AppText';
+import { useTabBar } from '../context/TabBarContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../utils/constants';
 
 const OrgCard = ({ org, courseCount, onPress }) => {
   const { t } = useTranslation();
@@ -36,6 +39,15 @@ const ExploreScreen = ({ navigation }) => {
   const { hPad, hCardW, isTablet } = useResponsive();
   const { t } = useTranslation();
   const [view, setView] = useState('courses');
+  const { hideTabBar, showTabBar } = useTabBar();
+  const insets = useSafeAreaInsets();
+  const lastScrollY = useRef(0);
+  const onScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y - lastScrollY.current > 10) hideTabBar();
+    else if (lastScrollY.current - y > 10) showTabBar();
+    lastScrollY.current = y;
+  };
 
   const getOrg = (orgId) => organizations.find((o) => o.id === orgId);
   const getCourseCount = (orgId) => courses.filter((c) => c.organizationId === orgId).length;
@@ -69,7 +81,7 @@ const ExploreScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <AppText style={styles.headerTitle}>{t('explore')}</AppText>
         <View style={styles.viewToggle}>
           {['courses', 'organizations'].map((v) => (
@@ -101,13 +113,17 @@ const ExploreScreen = ({ navigation }) => {
               />
             </View>
           )}
-          contentContainerStyle={[styles.orgList, { paddingHorizontal: hPad }]}
+          contentContainerStyle={[styles.orgList, { paddingHorizontal: hPad, paddingBottom: TAB_BAR_HEIGHT + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         />
       ) : (
         <SectionList
           sections={sections}
           keyExtractor={(item, index) => `section-${index}`}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
               <Ionicons name={section.icon} size={18} color={section.color} />
@@ -142,7 +158,7 @@ const ExploreScreen = ({ navigation }) => {
               contentContainerStyle={styles.hList}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
         />
@@ -159,7 +175,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 12,
   },
   headerTitle: {

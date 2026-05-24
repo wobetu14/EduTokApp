@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,9 @@ import { useTranslation } from '../utils/useTranslation';
 import { scheduleDailyReminder, cancelDailyReminder, requestPermissions } from '../services/notificationService';
 import { useA11y } from '../context/AccessibilityContext';
 import AppText from '../components/AppText';
+import { useTabBar } from '../context/TabBarContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../utils/constants';
 
 const StatCard = ({ icon, value, label, color }) => (
   <View style={styles.statCard}>
@@ -42,6 +45,15 @@ const ProfileScreen = ({ navigation }) => {
   const { hPad, formMaxW } = useResponsive();
   const { t } = useTranslation();
   const { fontScale, highContrast, setFontScale, setHighContrast } = useA11y();
+  const { hideTabBar, showTabBar } = useTabBar();
+  const insets = useSafeAreaInsets();
+  const lastScrollY = useRef(0);
+  const onScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y - lastScrollY.current > 10) hideTabBar();
+    else if (lastScrollY.current - y > 10) showTabBar();
+    lastScrollY.current = y;
+  };
   const {
     courses,
     organizations,
@@ -145,9 +157,9 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
       {/* Header */}
-      <LinearGradient colors={['#0D0D1A', COLORS.background]} style={styles.headerBg}>
+      <LinearGradient colors={['#0D0D1A', COLORS.background]} style={[styles.headerBg, { paddingTop: insets.top + 12 }]}>
         <View style={[styles.profileHeader, { paddingHorizontal: hPad }]}>
           <Image
             source={{ uri: user?.avatar || `https://picsum.photos/seed/profile/200/200` }}
@@ -585,13 +597,14 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </Modal>
+      <View style={{ height: TAB_BAR_HEIGHT + insets.bottom }} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerBg: { paddingTop: 16, paddingBottom: 8 },
+  headerBg: { paddingBottom: 8 },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',

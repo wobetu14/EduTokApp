@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,9 @@ import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import AppText from '../components/AppText';
+import { useTabBar } from '../context/TabBarContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../utils/constants';
 
 const SearchResultCard = ({ course, org, onPress }) => (
   <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
@@ -41,6 +44,15 @@ const SearchScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState(null);
+  const { hideTabBar, showTabBar } = useTabBar();
+  const insets = useSafeAreaInsets();
+  const lastScrollY = useRef(0);
+  const onScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y - lastScrollY.current > 10) hideTabBar();
+    else if (lastScrollY.current - y > 10) showTabBar();
+    lastScrollY.current = y;
+  };
 
   const getOrg = useCallback(
     (orgId) => organizations.find((o) => o.id === orgId),
@@ -64,7 +76,7 @@ const SearchScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Search bar */}
-      <View style={[styles.searchBar, { marginHorizontal: hPad }]}>
+      <View style={[styles.searchBar, { marginHorizontal: hPad, marginTop: insets.top + 8 }]}>
         <Ionicons name="search" size={18} color={COLORS.textMuted} />
         <TextInput
           style={styles.searchInput}
@@ -137,8 +149,10 @@ const SearchScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('CourseProfile', { courseId: item.id })}
             />
           )}
-          contentContainerStyle={[styles.resultList, { paddingHorizontal: hPad }]}
+          contentContainerStyle={[styles.resultList, { paddingHorizontal: hPad, paddingBottom: TAB_BAR_HEIGHT + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           ListEmptyComponent={
             <View style={styles.empty}>
               {query || selectedCat ? (

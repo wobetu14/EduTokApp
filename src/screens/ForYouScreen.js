@@ -23,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VideoPlayer from '../components/VideoPlayer';
-import { COLORS, SIZES } from '../utils/constants';
+import { COLORS, SIZES, TAB_BAR_HEIGHT } from '../utils/constants';
 import { formatDuration, shuffle, formatLargeNumber } from '../utils/helpers';
 import QuizModal from '../components/QuizModal';
 import CommentThread from '../components/CommentThread';
@@ -35,6 +35,7 @@ import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, sched
 import { useToast } from '../context/ToastContext';
 import StreakCelebration from '../components/StreakCelebration';
 import AppText from '../components/AppText';
+import { useTabBar } from '../context/TabBarContext';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -139,6 +140,7 @@ const ForYouScreen = ({ navigation }) => {
     streakMilestone, clearStreakMilestone,
   } = useCourses();
 
+  const { hideTabBar, showTabBar } = useTabBar();
   const insets = useSafeAreaInsets();
   const { W, H, commentsH } = useResponsive();
 
@@ -146,6 +148,8 @@ const ForYouScreen = ({ navigation }) => {
   const isWide = W >= 500;
   const slideWidth = isWide ? Math.min(W, 430) : W;
 
+  // tab bar: paddingTop(10) + pill(40) + paddingBottom(6) = 56 base + device inset
+  const tabBarH = 56 + insets.bottom;
   const [slideH, setSlideH] = useState(H);
   // Hide Share when screen is too short to fit it comfortably
   const showShare = slideH >= 700;
@@ -204,8 +208,10 @@ const ForYouScreen = ({ navigation }) => {
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy < -SWIPE_THRESHOLD) {
+          hideTabBar();
           tryGoNextRef.current?.();
         } else if (g.dy > SWIPE_THRESHOLD && currentIndexRef.current > 0) {
+          showTabBar();
           animateToPrevRef.current?.();
         } else {
           Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -331,7 +337,7 @@ const ForYouScreen = ({ navigation }) => {
         onLayout={(e) => setSlideH(e.nativeEvent.layout.height)}
       >
         <Animated.View
-          style={[styles.slide, { width: slideWidth, height: slideH, transform: [{ translateY }] }]}
+          style={[styles.slide, { width: slideWidth, height: slideH - tabBarH, transform: [{ translateY }] }]}
           {...panResponder.panHandlers}
         >
           {/* Lesson content */}
@@ -370,7 +376,7 @@ const ForYouScreen = ({ navigation }) => {
           </View>
 
           {/* Bottom-left: course title + lesson info */}
-          <View style={[styles.bottomLeft, { bottom: insets.bottom + 18 }]}>
+          <View style={[styles.bottomLeft, { bottom: insets.bottom + 16 }]}>
             <TouchableOpacity
               onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
               activeOpacity={0.75}
@@ -422,7 +428,7 @@ const ForYouScreen = ({ navigation }) => {
           </View>
 
           {/* Right side: enrollment indicator + engagement buttons */}
-          <View style={[styles.rightSide, { bottom: insets.bottom + 18 }]}>
+          <View style={[styles.rightSide, { bottom: insets.bottom + 16 }]}>
             {enrolled ? (
               <View style={styles.courseThumb}>
                 <Image source={{ uri: course.thumbnail }} style={styles.courseThumbImg} resizeMode="cover" />

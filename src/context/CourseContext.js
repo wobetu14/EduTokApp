@@ -202,7 +202,7 @@ export const CourseProvider = ({ children }) => {
   );
 
   const visibleCourses = state.courses.filter(
-    (c) => c.status === 'approved' && c.visibility === 'public'
+    (c) => (!c.status || c.status === 'approved') && (!c.visibility || c.visibility === 'public' || c.visibility === 'unlisted')
   );
 
   const getCoursesForOrg = useCallback(

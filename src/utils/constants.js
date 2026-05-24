@@ -137,3 +137,5 @@ export const COURSE_VISIBILITY = {
   unlisted: { label: 'Unlisted', icon: 'link-outline',     color: '#FF9800' },
   private:  { label: 'Private',  icon: 'lock-closed-outline', color: '#AAAAAA' },
 };
+
+export const TAB_BAR_HEIGHT = 62;
