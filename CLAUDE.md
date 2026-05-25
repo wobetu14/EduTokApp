@@ -267,6 +267,8 @@ Learner `email` field exists and is stored but is never used for authentication 
 - `audit_logs`: added `ip_address String?` and `user_agent String?`
 - `announcements`: added `target_role String?` (filters delivery by caller role)
 - `course_approvals`: redesigned — `submitted_by`/`submitted_at` tracked at submit time; `reviewer_id`/`reviewed_at` nullable until review; named Prisma relations `"CourseApprovalSubmitter"` and `"CourseApprovalReviewer"` on `User`
+- `organizations`: added `is_active Boolean @default(true)`, `suspended_reason String?`, `mobile String?`, `telephone String?`, `email String?`
+- `org_applications`: new model — self-registration requests with `org_name`, `contact_name`, `contact_email`, `contact_phone?`, `website?`, `description?`, `status` (`ApplicationStatus` enum: pending/approved/rejected), `reviewer_id?`, `reviewed_at?`, `reject_reason?`; reviewer relation named `"OrgApplicationReviewer"` on `User`
 
 ### Database — 33 tables (Phase 1 + Phase 2)
 
@@ -328,6 +330,47 @@ npx tsc --noEmit     # type-check without building
 - **`logAudit`** exported from `admin.service.ts` — accepts optional `ctx?: { ip_address?: string; user_agent?: string }` for audit trail; call from any module
 - **`sendPush`** exported from `notifications.service.ts` — fire-and-forget push + notification log
 - **`updateStreak` / `checkLessonBadges` / `checkQuizBadges`** in `src/utils/gamification.ts` — called from lessons/quizzes service after first completion
-- **Route ordering rule**: literal paths (`/me`, `/managed`, `/mine`, `/reorder`, `/categories`, `/read-all`, `/org-stats`) always declared before `/:id` params in every router
+- **Route ordering rule**: literal paths (`/me`, `/managed`, `/mine`, `/reorder`, `/categories`, `/read-all`, `/org-stats`, `/apply`, `/applications`, `/applications/:appId/review`) always declared before `/:id` params in every router
 - **Prisma `$transaction`**: used for all counter increments/decrements and multi-table writes that must be atomic
 - **Org isolation for org_admin**: `listMembers` and admin `listPendingCourses`/`reviewCourse` filter to orgs the caller belongs to; super_admin sees everything
+
+---
+
+## Admin Dashboard
+
+A React + Vite admin web app at `../edutok-dashboard/` (sibling directory).
+
+**Git remote:** `https://github.com/wobetu14/edutok-dashboard.git` (branch: `master`)
+
+### Stack
+React + Vite + TailwindCSS + shadcn/ui + TanStack Query + React Router v6 + Zod
+
+### Dev commands
+```bash
+cd ../edutok-dashboard
+npm run dev          # start Vite dev server (port 5173)
+npx vite build --mode development   # build check
+```
+
+### Pages & features (all completed)
+- **Auth** — Login with Zod validation; JWT stored in localStorage; learners blocked at route level
+- **Dashboard** — Stats cards, recent activity
+- **Users** — List (search + role filter), add managed user (instructor/org_admin/super_admin), activate/deactivate, edit, reset password, reassign org
+- **Organizations** — List with search; two-step create wizard (org details → org admin); org table rows clickable → detail page; edit, suspend/activate, delete (all with confirmation dialogs)
+- **Organization Detail** (`/organizations/:orgId`) — Hero header, stats row, About card, Contact Information card (`mobile`/`telephone`/`email` as `tel:`/`mailto:` links), Owner card, Members + Courses tabs, action buttons (Edit / Suspend / Activate / Delete) with inline dialogs
+- **Courses** — Tabbed view (pending/approved/rejected/all), approve/reject workflow
+- **Analytics** — Charts (super_admin / org_admin only)
+- **Audit Logs** — Table with filters (super_admin only)
+- **Announcements** — List, create with target role + expiry, delete (confirmation dialog)
+- **Categories** — CRUD with color picker and icon name
+- **Settings** — Light/dark + 6 color palettes; font size; high contrast
+- **Profile** — Update name/bio, avatar upload (Cloudinary), change password
+
+### Key UI conventions
+- All form dialogs: `max-w-md` width
+- Delete actions: confirmation dialog with entity preview (never `window.confirm()`)
+- Logo / avatar uploads: `OrgLogoUpload` component (`src/components/ui/OrgLogoUpload.jsx`) — uploads immediately to Cloudinary on file select, stores URL in form state, shows image-only preview (no filename or URL shown)
+- Custom `Tabs` component at `src/components/ui/tabs.jsx` (no Radix tabs installed)
+- `DataTable` supports optional `onRowClick` prop for navigable rows; action button containers use `e.stopPropagation()` to prevent conflict
+- Zod schemas in `src/lib/schemas.js`; `optionalUrl`, `optionalPhone`, `optionalEmail` preprocess helpers treat empty string as absent (`undefined`)
+- `FieldError` component for inline validation errors; `noValidate` on all forms
