@@ -9,6 +9,7 @@ import OrganizationProfileScreen from '../screens/OrganizationProfileScreen';
 import LessonPlaybackScreen from '../screens/LessonPlaybackScreen';
 import CertificateScreen from '../screens/CertificateScreen';
 import AuthorProfileScreen from '../screens/AuthorProfileScreen';
+import CategoryDetailScreen from '../screens/CategoryDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,6 +32,7 @@ export const ForYouStack = () => (
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
     <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
+    <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -42,6 +44,7 @@ export const ExploreStack = () => (
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
     <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
+    <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -53,6 +56,7 @@ export const SearchStack = () => (
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
     <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
+    <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -64,5 +68,6 @@ export const ProfileStack = () => (
     <Stack.Screen name="LessonPlayback" component={LessonPlaybackScreen} options={playbackOptions} />
     <Stack.Screen name="Certificate" component={CertificateScreen} />
     <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} />
+    <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
   </Stack.Navigator>
 );

@@ -125,10 +125,15 @@ const ExploreScreen = ({ navigation }) => {
           onScroll={onScroll}
           scrollEventThrottle={16}
           renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
+            <TouchableOpacity
+              style={styles.sectionHeader}
+              onPress={() => navigation.navigate('CategoryDetail', { categoryId: section.key })}
+              activeOpacity={0.75}
+            >
               <Ionicons name={section.icon} size={18} color={section.color} />
               <AppText style={[styles.sectionTitle, { color: section.color }]}>{section.title}</AppText>
-            </View>
+              <Ionicons name="chevron-forward" size={14} color={section.color} style={{ opacity: 0.7 }} />
+            </TouchableOpacity>
           )}
           renderItem={({ item: courseGroup }) => (
             <FlatList
