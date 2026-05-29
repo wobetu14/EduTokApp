@@ -191,6 +191,9 @@ const translations = {
     // Image matching quiz
     selectImageFirst: 'Tap an image, then tap its label',
     checkMatches: 'Check Matches',
+    // Sort Zone quiz
+    sortZoneHint: 'Tap a zone to classify the image',
+    confirmZone: 'Place Here',
     // Misc
     loading: 'Loading...',
     noResults: 'No results found',
@@ -412,6 +415,9 @@ const translations = {
     // Image matching quiz
     selectImageFirst: 'ምስሉን ጠቅ አድርግ፣ ከዚያ ሌቤሉን ጠቅ አድርግ',
     checkMatches: 'ዝምድናዎቹን ፈትሽ',
+    // Sort Zone quiz
+    sortZoneHint: 'ምስሉን ለመፈረጅ ዞኑን ጠቅ አድርግ',
+    confirmZone: 'እዚህ አስቀምጥ',
     // Misc
     loading: 'በመጫን ላይ...',
     noResults: 'ምንም ውጤት አልተገኘም',

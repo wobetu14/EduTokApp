@@ -783,8 +783,28 @@ This analysis reveals why Netflix invests heavily in original content — to red
       { uri: 'https://picsum.photos/seed/swot3/600/900', caption: 'Cross-analysis: use Strengths to seize Opportunities and to neutralize Threats.' },
     ],
     120,
-    false,
-    null
+    true,
+    {
+      id: 'q_swot_sort',
+      lessonId: 'l20',
+      questions: [
+        {
+          id: 'q_swot_sort_a',
+          type: 'sortzone',
+          text: 'A new competitor entering your market — where does this belong in SWOT?',
+          imageUri: 'https://picsum.photos/seed/swotcomp/400/300',
+          leftLabel: 'Internal Factor\n(Strength / Weakness)',
+          rightLabel: 'External Factor\n(Opportunity / Threat)',
+          correctZone: 'right',
+        },
+        {
+          id: 'q_swot_sort_b',
+          type: 'truefalse',
+          text: 'Strengths and Weaknesses in SWOT are internal to the organization.',
+          correctAnswer: true,
+        },
+      ],
+    }
   ),
 
   makeVideoLesson('l21', 'course6', 3, 'Blue Ocean Strategy', DEMO_VIDEO, 145,

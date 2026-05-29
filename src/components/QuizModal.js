@@ -87,6 +87,88 @@ const MultipleChoiceQuestion = ({ question, onAnswer, answered, selected }) => (
   </View>
 );
 
+const SortZoneQuestion = ({ question, onComplete }) => {
+  const { t } = useTranslation();
+  const [selected, setSelected] = useState(null); // 'left' | 'right'
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleZoneTap = (zone) => {
+    if (submitted) return;
+    setSelected(zone);
+  };
+
+  const handleSubmit = () => {
+    if (!selected || submitted) return;
+    setSubmitted(true);
+    onComplete(selected === question.correctZone);
+  };
+
+  return (
+    <View style={styles.szContainer}>
+      <View style={styles.szImageWrapper}>
+        <Image source={{ uri: question.imageUri }} style={styles.szImage} resizeMode="cover" />
+      </View>
+
+      <AppText style={styles.szHint}>{t('sortZoneHint')}</AppText>
+
+      <View style={styles.szZonesRow}>
+        {[
+          { zone: 'left', label: question.leftLabel },
+          { zone: 'right', label: question.rightLabel },
+        ].map(({ zone, label }) => {
+          const isSelected = selected === zone;
+          const isCorrect = submitted && zone === question.correctZone;
+          const isWrong = submitted && isSelected && zone !== question.correctZone;
+
+          return (
+            <TouchableOpacity
+              key={zone}
+              style={[
+                styles.szZone,
+                isSelected && !submitted && styles.szZoneSelected,
+                isCorrect && styles.szZoneCorrect,
+                isWrong && styles.szZoneWrong,
+              ]}
+              onPress={() => handleZoneTap(zone)}
+              activeOpacity={0.8}
+              disabled={submitted}
+            >
+              {isSelected && !submitted && (
+                <Image source={{ uri: question.imageUri }} style={styles.szMiniImg} resizeMode="cover" />
+              )}
+              {submitted && (isCorrect || isWrong) && (
+                <Ionicons
+                  name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                  size={28}
+                  color={isCorrect ? COLORS.success : COLORS.error}
+                />
+              )}
+              <AppText
+                style={[
+                  styles.szZoneLabel,
+                  isSelected && !submitted && { color: COLORS.primary },
+                  isCorrect && { color: COLORS.success },
+                  isWrong && { color: COLORS.error },
+                ]}
+                numberOfLines={3}
+              >
+                {label}
+              </AppText>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {!submitted && selected && (
+        <TouchableOpacity style={styles.nextBtn} onPress={handleSubmit}>
+          <AppText style={styles.nextBtnText}>{t('confirmZone')}</AppText>
+          <Ionicons name="checkmark" size={18} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
   const { t } = useTranslation();
   const shuffledLabels = useMemo(() => shuffle(question.pairs.map((p) => p.label)), [question.id]);
@@ -363,9 +445,15 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
                   onComplete={handleMatchComplete}
                 />
               )}
+              {question.type === 'sortzone' && (
+                <SortZoneQuestion
+                  question={question}
+                  onComplete={handleMatchComplete}
+                />
+              )}
 
-              {/* Feedback — skip for imagematching (it shows inline) */}
-              {answered && question.type !== 'imagematching' && (
+              {/* Feedback — skip for imagematching / sortzone (both show inline) */}
+              {answered && question.type !== 'imagematching' && question.type !== 'sortzone' && (
                 <View style={[
                   styles.feedback,
                   selected === question.correctAnswer ? styles.feedbackCorrect : styles.feedbackWrong,
@@ -635,6 +723,49 @@ const styles = StyleSheet.create({
   matchLabelDone: { opacity: 0.7 },
   matchLabelText: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '600', textAlign: 'center' },
   matchLabelUsedText: { color: COLORS.secondary },
+  // Sort Zone
+  szContainer: { paddingTop: 4, gap: 14 },
+  szImageWrapper: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: COLORS.card,
+  },
+  szImage: { width: '100%', height: '100%' },
+  szHint: { color: COLORS.textMuted, fontSize: SIZES.xs, textAlign: 'center' },
+  szZonesRow: { flexDirection: 'row', gap: 12 },
+  szZone: {
+    flex: 1,
+    minHeight: 110,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+  },
+  szZoneSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '15',
+  },
+  szZoneCorrect: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.success + '22',
+  },
+  szZoneWrong: {
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error + '22',
+  },
+  szMiniImg: { width: 52, height: 52, borderRadius: 8 },
+  szZoneLabel: {
+    color: COLORS.text,
+    fontWeight: '700',
+    fontSize: SIZES.base,
+    textAlign: 'center',
+  },
 });
 
 export default QuizModal;

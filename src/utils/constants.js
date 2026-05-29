@@ -61,6 +61,7 @@ export const QUIZ_TYPES = {
   truefalse: 'True / False',
   multiplechoice: 'Multiple Choice',
   imagematching: 'Image Match',
+  sortzone: 'Sort Zone',
 };
 
 export const STORAGE_KEYS = {

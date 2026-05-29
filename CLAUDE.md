@@ -247,6 +247,8 @@ A separate Node.js/Express REST API is being developed in parallel at `../edutok
 ### Roles
 `super_admin` → `org_admin` → `instructor` → `learner`
 
+**Course management permissions:** `super_admin` is read-only for courses (can view lists/details, cannot create/edit/delete/approve). `org_admin` has full course CRUD + approve/reject within their org. `instructor` can create and manage their own courses.
+
 ### 2FA rules
 | Role | 2FA channel |
 |---|---|
@@ -270,11 +272,13 @@ Learner `email` field exists and is stored but is never used for authentication 
 - `organizations`: added `is_active Boolean @default(true)`, `suspended_reason String?`, `mobile String?`, `telephone String?`, `email String?`
 - `org_applications`: new model — self-registration requests with `org_name`, `contact_name`, `contact_email`, `contact_phone?`, `website?`, `description?`, `status` (`ApplicationStatus` enum: pending/approved/rejected), `reviewer_id?`, `reviewed_at?`, `reject_reason?`; reviewer relation named `"OrgApplicationReviewer"` on `User`
 
-### Database — 33 tables (Phase 1 + Phase 2)
+### Database — 34 tables (Phase 1 + Phase 2)
 
 **Phase 1 (29):** `users`, `refresh_tokens`, `password_reset_tokens`, `phone_verifications`, `email_verifications`, `organizations`, `org_members`, `courses`, `lessons`, `quizzes`, `enrollments`, `lesson_completions`, `quiz_passes`, `video_watch_progress`, `streaks`, `lesson_likes`, `lesson_saves`, `comments`, `comment_likes`, `share_events`, `badges`, `certificates`, `instructor_follows`, `user_preferences`, `user_settings`, `device_tokens`, `notification_logs`, `media_uploads`, `categories`, `search_history`
 
 **Phase 2 additions (4):** `course_approvals`, `content_reports`, `audit_logs`, `announcements`
+
+**Post Phase 2 additions (1):** `course_categories` — many-to-many join between `courses` and `categories`; `Course.course_categories` relation added; `Category.courses` relation added. `createCourse` now accepts `category_ids: string[]` instead of `category: string` (legacy `category` string field kept for mobile compat, set to first selected category's label).
 
 ### API modules (build order)
 ```
