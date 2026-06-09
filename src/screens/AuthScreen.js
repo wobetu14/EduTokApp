@@ -110,7 +110,11 @@ const AuthScreen = () => {
         });
       }
     } catch (err) {
-      Alert.alert(t('error'), err.message || t('somethingWentWrong'));
+      if (err.requires2fa) {
+        Alert.alert(t('error'), 'Two-factor authentication is required for this account. Please contact support.');
+      } else {
+        Alert.alert(t('error'), err.message || t('somethingWentWrong'));
+      }
     } finally {
       setLoading(false);
     }

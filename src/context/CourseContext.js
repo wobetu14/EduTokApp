@@ -76,15 +76,47 @@ export const CourseProvider = ({ children }) => {
       return;
     }
     const load = async () => {
-      const [courses, organizations, instructors, lessons, progress, badges] = await Promise.all([
-        api.fetchCourses(),
-        api.fetchOrganizations(),
-        api.fetchInstructors(),
-        api.fetchLessons(),
-        api.fetchProgress(),
-        api.fetchBadges(),
-      ]);
-      dispatch({ type: 'LOADED', courses, organizations, instructors, lessons, progress, badges });
+      try {
+        // Phase 1: parallel fetch of list data
+        const [coursesRaw, organizations, instructors, progress, badges] = await Promise.all([
+          api.fetchCourses(),
+          api.fetchOrganizations(),
+          api.fetchInstructors(),
+          api.fetchProgress(),
+          api.fetchBadges(),
+        ]);
+
+        // Phase 2: enrich each course with its full detail (includes nested lessons)
+        const enriched = await Promise.all(
+          coursesRaw.map((c) => api.fetchCourseDetail(c.id).catch(() => c))
+        );
+
+        // Flatten all lessons from enriched courses
+        const lessons = enriched.flatMap((c) => c._lessons ?? []);
+
+        // Populate the legacy fetchLessons cache for any code that calls it directly
+        api.setCachedLessons(lessons);
+
+        // Seed the liked-lessons AsyncStorage cache from server is_liked flags
+        await api.seedLikedLessonsFromLessons(lessons);
+
+        // Merge server-side liked flags into progress
+        const likedLessons = lessons.filter((l) => l.isLiked).map((l) => l.id);
+        const progressWithLikes = { ...progress, likedLessons };
+
+        dispatch({
+          type: 'LOADED',
+          courses: enriched,
+          organizations,
+          instructors,
+          lessons,
+          progress: progressWithLikes,
+          badges,
+        });
+      } catch (e) {
+        console.error('CourseContext load failed', e);
+        dispatch({ type: 'RESET' });
+      }
     };
     load();
   }, [isSignedIn]);

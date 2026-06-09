@@ -1,179 +1,351 @@
-// apiService.js — stub layer over storageService.
-// Swap these implementations with real HTTP calls when a backend is ready.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { get, post, patch, del, saveTokens, clearTokens } from './httpClient';
 
-import * as storage from './storageService';
-import { generateId, isValidUsername, isValidPhone } from '../utils/helpers';
+// --- Data mappers (snake_case API → camelCase app) ---
 
-const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+const mapUser = (u) => ({
+  id:                   u.id,
+  username:             u.username,
+  fullName:             u.full_name,
+  phone:                u.phone ?? '',
+  bio:                  u.bio ?? '',
+  avatar:               u.avatar_url ?? `https://picsum.photos/seed/${u.username}/200/200`,
+  preferences:          u.preferences?.preferred_categories ?? [],
+  phoneVerified:        u.is_phone_verified ?? false,
+  language:             u.lang_pref ?? 'en',
+  notificationsEnabled: u.notifications_enabled ?? true,
+  createdAt:            u.created_at,
+});
+
+const mapContentJson = (type, raw) => {
+  if (!raw) return {};
+  if (type === 'text')  return { body: raw.body ?? raw };
+  if (type === 'image') {
+    const images = Array.isArray(raw) ? raw : [raw];
+    return { images };
+  }
+  if (type === 'video') {
+    return {
+      youtubeId: raw.youtubeId ?? raw.youtube_id ?? null,
+      videoUri:  raw.videoUri  ?? raw.video_url   ?? null,
+    };
+  }
+  return raw;
+};
+
+const mapLesson = (l) => ({
+  id:            l.id,
+  courseId:      l.course_id,
+  title:         l.title,
+  type:          l.type,
+  content:       mapContentJson(l.type, l.content_json),
+  duration:      l.duration_secs ?? 0,
+  order:         l.order_index   ?? 0,
+  thumbnail:     l.thumbnail_url ?? '',
+  hasQuiz:       l.has_quiz      ?? false,
+  quiz:          l.quiz          ?? null,
+  likesCount:    l.likes_count    ?? 0,
+  savesCount:    l.saves_count    ?? 0,
+  commentsCount: l.comments_count ?? 0,
+  sharesCount:   l.shares_count   ?? 0,
+  isLiked:       l.is_liked  ?? false,
+  isSaved:       l.is_saved  ?? false,
+});
+
+const mapCourse = (c, lessons = []) => ({
+  id:             c.id,
+  organizationId: c.org_id,
+  instructorId:   c.instructor_id,
+  title:          c.title,
+  description:    c.description  ?? '',
+  thumbnail:      c.thumbnail_url ?? '',
+  category:       c.category     ?? '',
+  tags:           c.tags         ?? [],
+  difficulty:     c.difficulty   ?? 'Beginner',
+  status:         c.status,
+  visibility:     c.visibility,
+  enrolledCount:  c.enrolled_count ?? 0,
+  totalDuration:  c.total_duration_secs ?? 0,
+  lessonIds:      lessons.map((l) => l.id),
+  _lessons:       lessons,
+});
+
+const mapOrganization = (o) => ({
+  id:          o.id,
+  name:        o.name,
+  logo:        o.logo_url    ?? '',
+  description: o.description ?? '',
+  courseCount: o._count?.courses ?? o.course_count ?? 0,
+  tags:        o.tags ?? [],
+});
+
+const mapInstructor = (u) => ({
+  id:             u.id,
+  organizationId: u.org_id ?? '',
+  name:           u.full_name ?? u.name ?? '',
+  avatar:         u.avatar_url ?? u.avatar ?? `https://picsum.photos/seed/${u.id}/200/200`,
+  bio:            u.bio ?? '',
+  expertise:      u.expertise ?? [],
+  followersCount: u._count?.followers ?? u.followers_count ?? 0,
+});
+
+const mapComment = (c) => ({
+  id:        c.id,
+  lessonId:  c.lesson_id,
+  userId:    c.user_id,
+  username:  c.user?.username ?? '',
+  avatar:    c.user?.avatar_url ?? '',
+  text:      c.body,
+  createdAt: c.created_at,
+  likes:     c.likes_count ?? 0,
+  parentId:  c.parent_id ?? null,
+  depth:     c.depth      ?? 0,
+});
+
+// --- Liked-lessons local cache (no /me/likes endpoint on backend) ---
+
+const LIKED_KEY = '@edutok_liked_lessons';
+
+const _getLikedLessonsCache = async () => {
+  const raw = await AsyncStorage.getItem(LIKED_KEY);
+  return raw ? JSON.parse(raw) : [];
+};
+
+const _setLikedLessonsCache = (ids) =>
+  AsyncStorage.setItem(LIKED_KEY, JSON.stringify(ids));
+
+export const seedLikedLessonsFromLessons = async (lessons) => {
+  const likedIds = lessons.filter((l) => l.isLiked).map((l) => l.id);
+  if (likedIds.length === 0) return;
+  const current = await _getLikedLessonsCache();
+  const merged  = Array.from(new Set([...current, ...likedIds]));
+  await _setLikedLessonsCache(merged);
+};
 
 // --- Auth ---
+
 export const signIn = async (username, password) => {
-  await delay();
-  const user = await storage.getUser();
-  if (!user) throw new Error('No account found. Please sign up.');
-  if (user.username.toLowerCase() !== username.toLowerCase())
-    throw new Error('Username not found.');
-  if (user._password !== password) throw new Error('Incorrect password.');
-  const { _password, ...safeUser } = user;
-  return safeUser;
+  const data = await post('/auth/login', { username, password }, { auth: false });
+  const d = data.data ?? data;
+  if (d.requires2fa) {
+    const err = new Error('2FA_REQUIRED');
+    err.requires2fa    = true;
+    err.challengeToken = d.challengeToken;
+    err.twoFaMethod    = d.two_fa_method;
+    throw err;
+  }
+  await saveTokens(d.accessToken, d.refreshToken);
+  return mapUser(d.user);
 };
 
 export const signUp = async ({ username, fullName, phone, password }) => {
-  await delay();
-  if (!isValidUsername(username)) throw new Error('Invalid username format.');
-  if (!isValidPhone(phone)) throw new Error('Invalid phone number.');
-  const newUser = {
-    id: generateId(),
-    username,
-    fullName,
-    phone,
-    bio: '',
-    avatar: `https://picsum.photos/seed/${username}/200/200`,
-    preferences: [],
-    phoneVerified: false,
-    language: 'en',
-    notificationsEnabled: true,
-    createdAt: new Date().toISOString(),
-    _password: password,
-  };
-  await storage.saveUser(newUser);
-  const { _password, ...safeUser } = newUser;
-  return safeUser;
+  const data = await post(
+    '/auth/register',
+    { username, full_name: fullName, phone, password },
+    { auth: false },
+  );
+  const d = data.data ?? data;
+  await saveTokens(d.accessToken, d.refreshToken);
+  return mapUser(d.user);
+};
+
+export const fetchCurrentUser = async () => {
+  const data = await get('/users/me');
+  const u = data.data ?? data;
+  return mapUser(u.user ?? u);
+};
+
+export const signOut = async () => {
+  try { await post('/auth/logout', {}); } catch { /* ignore */ }
+  await clearTokens();
 };
 
 export const updateUser = async (updates) => {
-  await delay(200);
-  const user = await storage.getUser();
-  const updated = { ...user, ...updates };
-  await storage.saveUser(updated);
-  const { _password, ...safeUser } = updated;
-  return safeUser;
+  const body = {};
+  if (updates.fullName             !== undefined) body.full_name             = updates.fullName;
+  if (updates.bio                  !== undefined) body.bio                   = updates.bio;
+  if (updates.avatar               !== undefined) body.avatar_url            = updates.avatar;
+  if (updates.language             !== undefined) body.lang_pref             = updates.language;
+  if (updates.notificationsEnabled !== undefined) body.notifications_enabled = updates.notificationsEnabled;
+  if (updates.preferences          !== undefined) body.preferred_categories  = updates.preferences;
+
+  const data = await patch('/users/me', body);
+  const u = data.data ?? data;
+  return mapUser(u.user ?? u);
 };
 
 // --- Content ---
+
 export const fetchCourses = async () => {
-  await delay(400);
-  return storage.getCourses();
+  const data = await get('/courses?limit=100&status=approved&visibility=public');
+  const list = data.data ?? data.courses ?? data;
+  return Array.isArray(list) ? list.map((c) => mapCourse(c)) : [];
+};
+
+export const fetchCourseDetail = async (courseId) => {
+  const data = await get(`/courses/${courseId}`);
+  const raw  = data.data ?? data.course ?? data;
+  const lessons = (raw.lessons ?? []).map(mapLesson);
+  return mapCourse(raw, lessons);
 };
 
 export const fetchOrganizations = async () => {
-  await delay(300);
-  return storage.getOrganizations();
+  const data = await get('/organizations');
+  const list = data.data ?? data.organizations ?? data;
+  return Array.isArray(list) ? list.map(mapOrganization) : [];
 };
 
 export const fetchInstructors = async () => {
-  await delay(200);
-  return storage.getInstructors();
+  try {
+    const data = await get('/instructors');
+    const list = data.data ?? data.instructors ?? data;
+    return Array.isArray(list) ? list.map(mapInstructor) : [];
+  } catch {
+    return [];
+  }
 };
 
-export const fetchLessons = async () => {
-  await delay(400);
-  return storage.getLessons();
-};
+// Populated by CourseContext after fetchCourseDetail calls; kept for interface compat.
+let _cachedLessons = [];
+export const setCachedLessons = (lessons) => { _cachedLessons = lessons; };
+export const fetchLessons = async () => _cachedLessons;
 
 // --- Progress ---
-export const fetchProgress = () => storage.getProgress();
+
+export const fetchProgress = async () => {
+  const [completions, saves, quizHistory, streakData, enrolledData] = await Promise.all([
+    get('/progress/me/completions').catch(() => ({})),
+    get('/progress/me/saves').catch(() => ({})),
+    get('/progress/me/quiz-history').catch(() => ({})),
+    get('/progress/me/streak').catch(() => ({})),
+    get('/courses?enrolled=true&limit=200').catch(() => ({})),
+  ]);
+
+  const completedLessons = ((completions.data ?? completions.completions ?? []) || []).map((c) => ({
+    lessonId:    c.lesson_id   ?? c.lessonId,
+    courseId:    c.course_id   ?? c.courseId,
+    completedAt: c.completed_at ?? c.completedAt,
+  }));
+
+  const favoritedLessons = ((saves.data ?? saves.saves ?? []) || []).map(
+    (s) => s.lesson_id ?? s.lessonId ?? s.id,
+  );
+
+  const passedQuizzes = ((quizHistory.data ?? quizHistory.quizPasses ?? quizHistory.quiz_passes ?? []) || []).map((q) => ({
+    quizId:   q.quiz_id  ?? q.quizId,
+    lessonId: q.lesson_id ?? q.lessonId,
+    score:    q.score,
+    passedAt: q.passed_at ?? q.passedAt,
+  }));
+
+  const sd = streakData.data ?? streakData;
+  const streak         = sd.current_streak     ?? sd.streak        ?? 0;
+  const totalSeconds   = sd.total_seconds_learned ?? sd.totalSeconds  ?? 0;
+  const lastActiveDate = sd.last_active_date   ?? sd.lastActiveDate ?? null;
+
+  const enrolledCourses = ((enrolledData.data ?? enrolledData.courses ?? []) || []).map(
+    (c) => c.id ?? c.course_id,
+  );
+
+  const likedLessons = await _getLikedLessonsCache();
+
+  return {
+    enrolledCourses,
+    completedLessons,
+    likedLessons,
+    favoritedLessons,
+    passedQuizzes,
+    streak,
+    lastActiveDate,
+    totalSeconds,
+  };
+};
 
 export const enrollCourse = async (courseId) => {
-  const p = await storage.getProgress();
-  if (!p.enrolledCourses.includes(courseId)) {
-    p.enrolledCourses.push(courseId);
-    await storage.saveProgress(p);
-  }
-  return p;
+  await post(`/courses/${courseId}/enroll`, {});
+  return fetchProgress();
 };
 
 export const completeLesson = async (lessonId, courseId, durationSeconds) => {
-  const p = await storage.getProgress();
-  const alreadyDone = p.completedLessons.some((cl) => cl.lessonId === lessonId);
-  if (!alreadyDone) {
-    p.completedLessons.push({
-      lessonId,
-      courseId,
-      completedAt: new Date().toISOString(),
-    });
-    p.totalSeconds = (p.totalSeconds || 0) + durationSeconds;
-    const today = new Date().toDateString();
-    if (p.lastActiveDate !== today) {
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      p.streak = p.lastActiveDate === yesterday ? (p.streak || 0) + 1 : 1;
-      p.lastActiveDate = today;
-    }
-    await storage.saveProgress(p);
+  try {
+    await post(`/lessons/${lessonId}/complete`, { course_id: courseId });
+  } catch (e) {
+    if (e.status !== 409) throw e;
   }
-  return p;
+  try {
+    await patch(`/lessons/${lessonId}/progress`, {
+      watched_seconds: durationSeconds,
+      total_seconds:   durationSeconds,
+    });
+  } catch { /* best-effort */ }
+  return fetchProgress();
 };
 
 export const toggleLike = async (lessonId) => {
-  const p = await storage.getProgress();
-  const idx = p.likedLessons.indexOf(lessonId);
-  if (idx === -1) p.likedLessons.push(lessonId);
-  else p.likedLessons.splice(idx, 1);
-  await storage.saveProgress(p);
-  return p;
+  const current = await _getLikedLessonsCache();
+  const isLiked = current.includes(lessonId);
+  if (isLiked) {
+    await del(`/engagement/lessons/${lessonId}/like`);
+    await _setLikedLessonsCache(current.filter((id) => id !== lessonId));
+  } else {
+    await post(`/engagement/lessons/${lessonId}/like`, {});
+    await _setLikedLessonsCache([...current, lessonId]);
+  }
+  return fetchProgress();
 };
 
 export const toggleFavorite = async (lessonId) => {
-  const p = await storage.getProgress();
-  const idx = p.favoritedLessons.indexOf(lessonId);
-  if (idx === -1) p.favoritedLessons.push(lessonId);
-  else p.favoritedLessons.splice(idx, 1);
-  await storage.saveProgress(p);
-  return p;
+  const progress = await fetchProgress();
+  const isSaved  = progress.favoritedLessons.includes(lessonId);
+  if (isSaved) {
+    await del(`/engagement/lessons/${lessonId}/save`);
+  } else {
+    await post(`/engagement/lessons/${lessonId}/save`, {});
+  }
+  return fetchProgress();
 };
 
 export const recordQuizPass = async (quizId, lessonId, score) => {
-  const p = await storage.getProgress();
-  const already = p.passedQuizzes.some((q) => q.quizId === quizId);
-  if (!already) {
-    p.passedQuizzes.push({
-      quizId,
-      lessonId,
-      score,
-      passedAt: new Date().toISOString(),
-    });
-    await storage.saveProgress(p);
+  try {
+    await post(`/quizzes/${quizId}/submit`, { lesson_id: lessonId, score });
+  } catch (e) {
+    if (e.status !== 409) throw e;
   }
-  return p;
+  return fetchProgress();
 };
 
 // --- Comments ---
-export const fetchComments = (lessonId) => storage.getCommentsForLesson(lessonId);
 
-export const postComment = async (lessonId, userId, username, avatar, text) => {
-  const comment = {
-    id: generateId(),
-    lessonId,
-    userId,
-    username,
-    avatar,
-    text,
-    createdAt: new Date().toISOString(),
-    likes: 0,
-    parentId: null,
-    depth: 0,
-  };
-  const updated = await storage.addComment(lessonId, comment);
-  return updated;
+export const fetchComments = async (lessonId) => {
+  const data = await get(`/engagement/lessons/${lessonId}/comments`);
+  const list = data.data ?? data.comments ?? data;
+  return Array.isArray(list) ? list.map(mapComment) : [];
 };
 
-export const postReply = async (lessonId, parentId, userId, username, avatar, text) => {
-  const reply = {
-    id: generateId(),
-    lessonId,
-    userId,
-    username,
-    avatar,
-    text,
-    createdAt: new Date().toISOString(),
-    likes: 0,
-    parentId,
-    depth: 1,
-  };
-  const updated = await storage.addReply(lessonId, reply);
-  return updated;
+export const postComment = async (lessonId, _userId, _username, _avatar, text) => {
+  await post(`/engagement/lessons/${lessonId}/comments`, { body: text });
+  return fetchComments(lessonId);
+};
+
+export const postReply = async (lessonId, parentId, _userId, _username, _avatar, text) => {
+  await post(`/engagement/lessons/${lessonId}/comments`, { body: text, parent_id: parentId });
+  return fetchComments(lessonId);
 };
 
 // --- Badges ---
-export const fetchBadges = () => storage.getBadges();
-export const saveBadges = (badges) => storage.saveBadges(badges);
+
+export const fetchBadges = async () => {
+  try {
+    const data = await get('/progress/me/badges');
+    const list = data.data ?? data.badges ?? data;
+    return Array.isArray(list)
+      ? list.map((b) => ({ id: b.badge_key ?? b.id, earnedAt: b.earned_at ?? b.earnedAt }))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveBadges = async (_badges) => {
+  // Server manages badge awarding; retained for interface compatibility.
+};

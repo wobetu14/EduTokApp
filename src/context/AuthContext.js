@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as storage from '../services/storageService';
 import * as api from '../services/apiService';
+import { clearTokens, setSessionExpiredHandler } from '../services/httpClient';
 import { setLanguage } from '../utils/i18n';
 import { scheduleDailyReminder, getPermissionStatus } from '../services/notificationService';
 
@@ -40,14 +42,23 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
+    // Wire session-expired callback so httpClient can trigger sign-out on token failure
+    setSessionExpiredHandler(() => dispatch({ type: 'SIGN_OUT' }));
+
     const restore = async () => {
       try {
-        await storage.seedDataIfNeeded();
-        const user = await storage.getUser();
+        const token = await AsyncStorage.getItem('@edutok_access_token');
         const hasOnboarded = await storage.getHasOnboarded();
+        if (!token) {
+          dispatch({ type: 'RESTORE', user: null, hasOnboarded });
+          return;
+        }
+        // Token exists — validate and fetch fresh user data
+        const user = await api.fetchCurrentUser();
         if (user?.language) setLanguage(user.language);
         dispatch({ type: 'RESTORE', user, hasOnboarded });
       } catch {
+        await clearTokens();
         dispatch({ type: 'RESTORE', user: null, hasOnboarded: false });
       }
     };
@@ -72,6 +83,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signOut = useCallback(async () => {
+    await api.signOut();
     await storage.clearAllUserData();
     dispatch({ type: 'SIGN_OUT' });
   }, []);

@@ -75,6 +75,8 @@ export const STORAGE_KEYS = {
   comments: '@edutok_comments',
   badges: '@edutok_badges',
   a11y: '@edutok_a11y',
+  accessToken: '@edutok_access_token',
+  refreshToken: '@edutok_refresh_token',
 };
 
 export const BADGE_DEFS = [

@@ -128,5 +128,6 @@ export const clearAllUserData = async () => {
     STORAGE_KEYS.hasOnboarded,
     STORAGE_KEYS.comments,
     STORAGE_KEYS.badges,
+    '@edutok_liked_lessons',
   ]);
 };
