@@ -134,6 +134,9 @@ export const signIn = async (username, password) => {
     err.twoFaMethod    = d.two_fa_method;
     throw err;
   }
+  if (d.user?.role && d.user.role !== 'learner') {
+    throw new Error('This app is for students only. Please use the admin dashboard to manage content.');
+  }
   await saveTokens(d.accessToken, d.refreshToken);
   return mapUser(d.user);
 };
@@ -152,7 +155,12 @@ export const signUp = async ({ username, fullName, phone, password }) => {
 export const fetchCurrentUser = async () => {
   const data = await get('/users/me');
   const u = data.data ?? data;
-  return mapUser(u.user ?? u);
+  const raw = u.user ?? u;
+  if (raw?.role && raw.role !== 'learner') {
+    await clearTokens();
+    throw new Error('Non-learner account');
+  }
+  return mapUser(raw);
 };
 
 export const signOut = async () => {
