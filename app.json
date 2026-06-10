@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.edutok.app"
@@ -29,17 +31,12 @@
     },
     "plugins": [
       [
-        "expo-av",
-        {
-          "microphonePermission": "Allow EduTok to access your microphone."
-        }
-      ],
-      [
         "expo-notifications",
         {
           "color": "#FE2C55"
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }
