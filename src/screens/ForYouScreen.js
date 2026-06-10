@@ -156,6 +156,7 @@ const ForYouScreen = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [pendingNext, setPendingNext] = useState(false);
+  const [pendingPrev, setPendingPrev] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -165,8 +166,13 @@ const ForYouScreen = ({ navigation }) => {
   // Refs: allow panResponder to call latest callbacks without stale closures
   const currentIndexRef = useRef(0);
   const tryGoNextRef = useRef(null);
+  const tryGoPrevRef = useRef(null);
   const animateToPrevRef = useRef(null);
   const currentLessonTypeRef = useRef(null);
+  // Updated every render so panResponder always reads the latest slide width
+  const slideWidthRef = useRef(slideWidth);
+  // Updated every render so infinite-scroll modulo always has latest feed length
+  const feedLengthRef = useRef(0);
 
   // Build course-wise feed — one entry per course (first lesson as preview).
   // Swiping navigates between courses, not individual lessons.
@@ -194,11 +200,19 @@ const ForYouScreen = ({ navigation }) => {
   // PanResponder — created once; reads mutable refs during gestures
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false, // let buttons claim taps
       onMoveShouldSetPanResponder: (_, g) => {
+        // Never steal gestures that start in the right-side button column
+        if (g.x0 > slideWidthRef.current - 90) return false;
         const type = currentLessonTypeRef.current;
-        if (type === 'text') return false;
+        if (type === 'text') {
+          // High threshold lets the inner ScrollView handle casual scrolls;
+          // a decisive upward flick (50 px, strongly vertical) navigates away
+          return Math.abs(g.dy) > 50 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
+        }
         if (type === 'image') {
-          return Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
+          // Steal from horizontal ScrollView only when user clearly swipes vertically
+          return Math.abs(g.dy) > 40 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
         }
         return Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
       },
@@ -209,9 +223,10 @@ const ForYouScreen = ({ navigation }) => {
         if (g.dy < -SWIPE_THRESHOLD) {
           hideTabBar();
           tryGoNextRef.current?.();
-        } else if (g.dy > SWIPE_THRESHOLD && currentIndexRef.current > 0) {
+        } else if (g.dy > SWIPE_THRESHOLD) {
+          // Infinite: no index guard — always allow swipe-down
           showTabBar();
-          animateToPrevRef.current?.();
+          tryGoPrevRef.current?.();
         } else {
           Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
         }
@@ -242,7 +257,8 @@ const ForYouScreen = ({ navigation }) => {
       duration: 260,
       useNativeDriver: true,
     }).start(() => {
-      setCurrentIndex((i) => i + 1);
+      // Infinite: wrap around to first when past the end
+      setCurrentIndex((i) => (i + 1) % feedLengthRef.current);
       translateY.setValue(0);
       setVideoActive(true);
     });
@@ -255,7 +271,8 @@ const ForYouScreen = ({ navigation }) => {
       duration: 260,
       useNativeDriver: true,
     }).start(() => {
-      setCurrentIndex((i) => i - 1);
+      // Infinite: wrap around to last when before the start
+      setCurrentIndex((i) => (i - 1 + feedLengthRef.current) % feedLengthRef.current);
       translateY.setValue(0);
       setVideoActive(true);
     });
@@ -263,23 +280,36 @@ const ForYouScreen = ({ navigation }) => {
 
   const tryGoNext = useCallback(() => {
     if (!lesson) return;
-    // Quiz gate only fires when enrolled — discovery feed viewers can scroll freely
-    if (lesson.hasQuiz && isEnrolled(course?.id) && !isQuizPassed(lesson.quiz?.id)) {
+    // Quiz gate only fires when enrolled with valid quiz data
+    if (lesson.hasQuiz && lesson.quiz && isEnrolled(course?.id) && !isQuizPassed(lesson.quiz?.id)) {
       setPendingNext(true);
       setShowQuiz(true);
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-    } else if (currentIndex < feed.length - 1) {
-      animateToNext();
     } else {
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+      animateToNext(); // infinite: always navigate
     }
-  }, [lesson, course, isEnrolled, isQuizPassed, currentIndex, feed.length, animateToNext, translateY]);
+  }, [lesson, course, isEnrolled, isQuizPassed, animateToNext, translateY]);
+
+  const tryGoPrev = useCallback(() => {
+    if (!lesson) return;
+    // Quiz gate on swipe-down as well
+    if (lesson.hasQuiz && lesson.quiz && isEnrolled(course?.id) && !isQuizPassed(lesson.quiz?.id)) {
+      setPendingPrev(true);
+      setShowQuiz(true);
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+    } else {
+      animateToPrev(); // infinite: always navigate
+    }
+  }, [lesson, course, isEnrolled, isQuizPassed, animateToPrev, translateY]);
 
   // Update refs on every render so panResponder always calls latest version
   currentIndexRef.current = currentIndex;
   tryGoNextRef.current = tryGoNext;
+  tryGoPrevRef.current = tryGoPrev;
   animateToPrevRef.current = animateToPrev;
   currentLessonTypeRef.current = lesson?.type ?? null;
+  slideWidthRef.current = slideWidth;
+  feedLengthRef.current = feed.length;
 
   const handleQuizPass = useCallback(
     async (quizId, score) => {
@@ -291,9 +321,12 @@ const ForYouScreen = ({ navigation }) => {
       if (pendingNext) {
         setPendingNext(false);
         animateToNext();
+      } else if (pendingPrev) {
+        setPendingPrev(false);
+        animateToPrev();
       }
     },
-    [recordQuizPass, lesson, pendingNext, animateToNext, user]
+    [recordQuizPass, lesson, pendingNext, pendingPrev, animateToNext, animateToPrev, user]
   );
 
   const handleShare = useCallback(async () => {
@@ -407,31 +440,40 @@ const ForYouScreen = ({ navigation }) => {
               )}
             </View>
 
-            {currentIndex < feed.length - 1 && (
-              lesson.type === 'text' ? (
-                <TouchableOpacity
-                  style={styles.swipeHint}
-                  onPress={() => tryGoNextRef.current?.()}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.7)" />
-                  <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextCourse')}</AppText>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.swipeHint}>
-                  <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
-                  <AppText style={styles.swipeHintText}>{t('swipeForNextCourse')}</AppText>
-                </View>
-              )
+            {/* Always shown — feed is infinite, always a next lesson */}
+            {lesson.type === 'text' || lesson.type === 'image' ? (
+              <TouchableOpacity
+                style={styles.swipeHint}
+                onPress={() => tryGoNextRef.current?.()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.7)" />
+                <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextCourse')}</AppText>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.swipeHint}>
+                <Ionicons name="chevron-up" size={13} color="rgba(255,255,255,0.4)" />
+                <AppText style={styles.swipeHintText}>{t('swipeForNextCourse')}</AppText>
+              </View>
             )}
           </View>
 
           {/* Right side: enrollment indicator + engagement buttons */}
           <View style={[styles.rightSide, { bottom: insets.bottom + 16 }]}>
             {enrolled ? (
-              <View style={styles.courseThumb}>
-                <Image source={{ uri: course.thumbnail }} style={styles.courseThumbImg} resizeMode="cover" />
-              </View>
+              <TouchableOpacity
+                style={styles.courseThumb}
+                onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
+                activeOpacity={0.85}
+              >
+                {course.thumbnail ? (
+                  <Image source={{ uri: course.thumbnail }} style={styles.courseThumbImg} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.courseThumbImg, styles.courseThumbFallback]}>
+                    <Ionicons name="checkmark" size={22} color={COLORS.success} />
+                  </View>
+                )}
+              </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 style={styles.enrollBtn}
@@ -483,7 +525,7 @@ const ForYouScreen = ({ navigation }) => {
         visible={showQuiz}
         quiz={lesson?.quiz}
         onPass={handleQuizPass}
-        onClose={() => { setShowQuiz(false); setPendingNext(false); }}
+        onClose={() => { setShowQuiz(false); setPendingNext(false); setPendingPrev(false); }}
       />
 
       {/* Comments bottom sheet */}
@@ -688,6 +730,11 @@ const styles = StyleSheet.create({
   courseThumbImg: {
     width: '100%',
     height: '100%',
+  },
+  courseThumbFallback: {
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtn: {
     alignItems: 'center',

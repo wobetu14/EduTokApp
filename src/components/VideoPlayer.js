@@ -68,7 +68,7 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
           style={styles.fill}
           contentFit="cover"
           nativeControls={false}
-          allowsFullscreen={false}
+          fullscreenOptions={{ isFullscreenButtonHidden: true }}
         />
 
         {/* Spinner while buffering */}

@@ -1,18 +1,25 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 const isNative = Platform.OS !== 'web';
+// expo-notifications push support was removed from Expo Go in SDK 53.
+// Skip all notification calls when running inside Expo Go to avoid the error.
+const isExpoGo = Constants.appOwnership === 'expo';
+const notifEnabled = isNative && !isExpoGo;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (notifEnabled) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export const requestPermissions = async () => {
-  if (!isNative) return false;
+  if (!notifEnabled) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
   const { status } = await Notifications.requestPermissionsAsync();
@@ -20,13 +27,13 @@ export const requestPermissions = async () => {
 };
 
 export const getPermissionStatus = async () => {
-  if (!isNative) return 'undetermined';
+  if (!notifEnabled) return 'undetermined';
   const { status } = await Notifications.getPermissionsAsync();
   return status;
 };
 
 export const scheduleLessonCompleteNotification = async (lessonTitle) => {
-  if (!isNative) return;
+  if (!notifEnabled) return;
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -40,7 +47,7 @@ export const scheduleLessonCompleteNotification = async (lessonTitle) => {
 };
 
 export const scheduleEnrollmentNotification = async (courseTitle) => {
-  if (!isNative) return;
+  if (!notifEnabled) return;
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -54,7 +61,7 @@ export const scheduleEnrollmentNotification = async (courseTitle) => {
 };
 
 export const scheduleQuizPassNotification = async (score) => {
-  if (!isNative) return;
+  if (!notifEnabled) return;
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -70,7 +77,7 @@ export const scheduleQuizPassNotification = async (score) => {
 const DAILY_REMINDER_ID = 'edutok_daily_reminder';
 
 export const scheduleDailyReminder = async () => {
-  if (!isNative) return;
+  if (!notifEnabled) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
     await Notifications.scheduleNotificationAsync({
@@ -89,7 +96,7 @@ export const scheduleDailyReminder = async () => {
 };
 
 export const cancelDailyReminder = async () => {
-  if (!isNative) return;
+  if (!notifEnabled) return;
   try {
     await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
   } catch (_) {}
