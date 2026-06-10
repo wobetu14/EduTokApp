@@ -204,36 +204,31 @@ const ForYouScreen = ({ navigation }) => {
     PanResponder.create({
       onStartShouldSetPanResponder: () => false, // let buttons claim taps
       onMoveShouldSetPanResponder: (_, g) => {
+        // Never steal gestures while an animation is in flight
+        if (isAnimatingRef.current) return false;
         // Never steal gestures that start in the right-side button column
         if (g.x0 > slideWidthRef.current - 90) return false;
         const type = currentLessonTypeRef.current;
         if (type === 'text') {
-          // High threshold lets the inner ScrollView handle casual scrolls;
-          // a decisive upward flick (50 px, strongly vertical) navigates away
           return Math.abs(g.dy) > 50 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
         }
         if (type === 'image') {
-          // Steal from horizontal ScrollView only when user clearly swipes vertically
           return Math.abs(g.dy) > 40 && Math.abs(g.dy) > Math.abs(g.dx) * 2;
         }
         return Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
       },
       onPanResponderMove: (_, g) => {
-        // Block finger tracking while a slide animation is in flight
         if (isAnimatingRef.current) return;
         translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
-        // Ignore release if animation is already running — snap back
-        if (isAnimatingRef.current) {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-          return;
-        }
+        // Animation running — drop this gesture entirely (do NOT fire a spring
+        // that would interrupt the ongoing timing animation)
+        if (isAnimatingRef.current) return;
         if (g.dy < -SWIPE_THRESHOLD) {
           hideTabBar();
           tryGoNextRef.current?.();
         } else if (g.dy > SWIPE_THRESHOLD) {
-          // Infinite: no index guard — always allow swipe-down
           showTabBar();
           tryGoPrevRef.current?.();
         } else {
@@ -262,37 +257,44 @@ const ForYouScreen = ({ navigation }) => {
   const animateToNext = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
-    setVideoActive(false);
     Animated.timing(translateY, {
       toValue: -slideH,
-      duration: 260,
+      duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      isAnimatingRef.current = false;
-      // Always reset position and re-enable video; only advance index on clean finish
       if (finished) {
         setCurrentIndex((i) => (i + 1) % feedLengthRef.current);
+        // Wait one frame so React renders the new lesson at -slideH (off-screen)
+        // before resetting the position — prevents the 1-frame flash of old content
+        requestAnimationFrame(() => {
+          translateY.setValue(0);
+          isAnimatingRef.current = false;
+        });
+      } else {
+        translateY.setValue(0);
+        isAnimatingRef.current = false;
       }
-      translateY.setValue(0);
-      setVideoActive(true);
     });
   }, [translateY, slideH]);
 
   const animateToPrev = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
-    setVideoActive(false);
     Animated.timing(translateY, {
       toValue: slideH,
-      duration: 260,
+      duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      isAnimatingRef.current = false;
       if (finished) {
         setCurrentIndex((i) => (i - 1 + feedLengthRef.current) % feedLengthRef.current);
+        requestAnimationFrame(() => {
+          translateY.setValue(0);
+          isAnimatingRef.current = false;
+        });
+      } else {
+        translateY.setValue(0);
+        isAnimatingRef.current = false;
       }
-      translateY.setValue(0);
-      setVideoActive(true);
     });
   }, [translateY, slideH]);
 
@@ -331,7 +333,11 @@ const ForYouScreen = ({ navigation }) => {
 
   const handleQuizPass = useCallback(
     async (quizId, score) => {
-      await recordQuizPass(quizId, lesson.id, score);
+      try {
+        await recordQuizPass(quizId, lesson.id, score);
+      } catch (_) {
+        // Never let a server error block the quiz flow — pass is tracked locally
+      }
       if (user?.notificationsEnabled !== false) {
         scheduleQuizPassNotification(score);
       }

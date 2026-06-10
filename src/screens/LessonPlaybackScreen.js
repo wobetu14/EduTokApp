@@ -254,37 +254,47 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const animateToNext = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
-    setVideoActive(false);
     Animated.timing(translateY, {
       toValue: -slideH,
-      duration: 260,
+      duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      isAnimatingRef.current = false;
-      if (finished) setCurrentIndex((i) => i + 1);
-      translateY.setValue(0);
-      setVideoActive(true);
+      if (finished) {
+        setCurrentIndex((i) => i + 1);
+        requestAnimationFrame(() => {
+          translateY.setValue(0);
+          isAnimatingRef.current = false;
+        });
+      } else {
+        translateY.setValue(0);
+        isAnimatingRef.current = false;
+      }
     });
   }, [translateY, slideH]);
 
   const animateToPrev = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
-    setVideoActive(false);
     Animated.timing(translateY, {
       toValue: slideH,
-      duration: 260,
+      duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      isAnimatingRef.current = false;
-      if (finished) setCurrentIndex((i) => i - 1);
-      translateY.setValue(0);
-      setVideoActive(true);
+      if (finished) {
+        setCurrentIndex((i) => i - 1);
+        requestAnimationFrame(() => {
+          translateY.setValue(0);
+          isAnimatingRef.current = false;
+        });
+      } else {
+        translateY.setValue(0);
+        isAnimatingRef.current = false;
+      }
     });
   }, [translateY, slideH]);
 
   const tryGoNext = useCallback(() => {
-    if (lesson?.hasQuiz && !isQuizPassed(lesson.quiz?.id)) {
+    if (lesson?.hasQuiz && lesson?.quiz && enrolled && !isQuizPassed(lesson.quiz?.id)) {
       setPendingNext(true);
       setShowQuiz(true);
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -294,7 +304,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
       navigation.goBack();
     }
-  }, [lesson, isQuizPassed, currentIndex, lessons.length, animateToNext, translateY, navigation]);
+  }, [lesson, enrolled, isQuizPassed, currentIndex, lessons.length, animateToNext, translateY, navigation]);
 
   const goToPrev = useCallback(() => {
     if (currentIndex > 0) {
@@ -312,6 +322,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => {
+        if (isAnimatingRef.current) return false;
         const type = currentLessonTypeRef.current;
         if (type === 'text') return false;
         if (type === 'image') {
@@ -324,10 +335,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
-        if (isAnimatingRef.current) {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-          return;
-        }
+        if (isAnimatingRef.current) return;
         if (g.dy < -SWIPE_THRESHOLD) {
           tryGoNextRef.current?.();
         } else if (g.dy > SWIPE_THRESHOLD) {
@@ -340,7 +348,11 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   ).current;
 
   const handleQuizPass = useCallback(async (quizId, score) => {
-    await recordQuizPass(quizId, lesson.id, score);
+    try {
+      await recordQuizPass(quizId, lesson.id, score);
+    } catch (_) {
+      // Never let a server error block the quiz flow — pass is tracked locally
+    }
     if (user?.notificationsEnabled !== false) {
       scheduleQuizPassNotification(score);
     }

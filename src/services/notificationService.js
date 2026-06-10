@@ -4,8 +4,10 @@ import Constants from 'expo-constants';
 
 const isNative = Platform.OS !== 'web';
 // expo-notifications push support was removed from Expo Go in SDK 53.
-// Skip all notification calls when running inside Expo Go to avoid the error.
-const isExpoGo = Constants.appOwnership === 'expo';
+// executionEnvironment === 'storeClient' is the reliable cross-platform Expo Go check.
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' ||
+  Constants.appOwnership === 'expo';
 const notifEnabled = isNative && !isExpoGo;
 
 if (notifEnabled) {

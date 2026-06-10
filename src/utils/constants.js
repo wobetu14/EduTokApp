@@ -47,7 +47,7 @@ export const CATEGORIES = [
   { id: 'art', label: 'Art', icon: 'color-palette', color: '#E91E63' },
   { id: 'business', label: 'Business', icon: 'briefcase', color: '#FF9800' },
   { id: 'ai', label: 'AI', icon: 'hardware-chip', color: '#00BCD4' },
-  { id: 'psychology', label: 'Psychology', icon: 'brain', color: '#8BC34A' },
+  { id: 'psychology', label: 'Psychology', icon: 'happy-outline', color: '#8BC34A' },
   { id: 'finance', label: 'Finance', icon: 'cash', color: '#4CAF50' },
 ];
 

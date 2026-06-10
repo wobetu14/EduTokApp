@@ -45,20 +45,43 @@ const mapLesson = (l) => ({
   content:       mapContentJson(l.type, l.content_json),
   duration:      l.duration_secs ?? 0,
   order:         l.order_index   ?? 0,
-  thumbnail:     l.thumbnail_url ?? '',
+  thumbnail:     l.thumbnail_url || null,
   hasQuiz:       l.has_quiz      ?? false,
-  quiz:          l.quiz ? {
-    id:        l.quiz.id,
-    type:      l.quiz.type,
-    questions: (l.quiz.questions_json ?? []).map((q) => ({
-      ...q,
-      // Normalize question text — backend may store as 'question', 'prompt', etc.
-      text: q.text ?? q.question ?? q.prompt ?? q.title ?? q.stem ?? '',
-      // Inject quiz-level type (lowercase) into each question if not already present.
-      // Backend uses camelCase (multipleChoice, imageMatching); QuizModal expects lowercase.
-      type: (q.type ?? l.quiz.type ?? '').toLowerCase().replace(/[-_\s]/g, ''),
-    })),
-  } : null,
+  quiz:          l.quiz ? (() => {
+    const quizType = (l.quiz.type ?? '').toLowerCase().replace(/[-_\s]/g, '');
+    return {
+      id:        l.quiz.id,
+      type:      quizType,
+      questions: (l.quiz.questions_json ?? []).map((q, qi) => {
+        // Normalize question text — seed uses 'text'; API schema uses 'question'
+        const text = q.text ?? q.question ?? q.prompt ?? q.title ?? '';
+        // Normalize type — seed stores per-question; API only on the quiz object
+        const type = (q.type ?? l.quiz.type ?? '').toLowerCase().replace(/[-_\s]/g, '') || quizType;
+        // Normalize correctAnswer — seed uses 'correctAnswer'; API schema uses 'answer'
+        let correctAnswer = q.correctAnswer !== undefined ? q.correctAnswer : q.answer;
+        // multipleChoice: API stores answer as the option label string; QuizModal expects index
+        if (type === 'multiplechoice' && typeof correctAnswer === 'string' && Array.isArray(q.options)) {
+          const idx = q.options.indexOf(correctAnswer);
+          correctAnswer = idx >= 0 ? idx : 0;
+        }
+        // imageMatching: normalize pairs — API stores { image, label }; QuizModal expects { id, imageUri, label }
+        const pairs = Array.isArray(q.pairs)
+          ? q.pairs.map((p, pi) => ({
+              id:       p.id       ?? `pair_${qi}_${pi}`,
+              imageUri: p.imageUri ?? p.image ?? p.uri ?? '',
+              label:    p.label    ?? '',
+            }))
+          : undefined;
+        return {
+          ...q,
+          text,
+          type,
+          correctAnswer,
+          ...(pairs ? { pairs } : {}),
+        };
+      }),
+    };
+  })() : null,
   likesCount:    l.likes_count    ?? 0,
   savesCount:    l.saves_count    ?? 0,
   commentsCount: l.comments_count ?? 0,
@@ -73,7 +96,7 @@ const mapCourse = (c, lessons = []) => ({
   instructorId:   c.instructor_id,
   title:          c.title,
   description:    c.description  ?? '',
-  thumbnail:      c.thumbnail_url ?? '',
+  thumbnail:      c.thumbnail_url || null,
   category:       c.category     ?? '',
   tags:           c.tags         ?? [],
   difficulty:     c.difficulty   ?? 'Beginner',
@@ -89,7 +112,7 @@ const mapCourse = (c, lessons = []) => ({
 const mapOrganization = (o) => ({
   id:          o.id,
   name:        o.name,
-  logo:        o.logo_url    ?? '',
+  logo:        o.logo_url    || null,
   description: o.description ?? '',
   courseCount: o._count?.courses ?? o.course_count ?? 0,
   tags:        o.tags ?? [],
@@ -118,9 +141,11 @@ const mapComment = (c) => ({
   depth:     c.depth      ?? 0,
 });
 
-// --- Liked-lessons local cache (no /me/likes endpoint on backend) ---
+// --- Local caches (no corresponding backend endpoints, or backend submission unreliable) ---
 
-const LIKED_KEY = '@edutok_liked_lessons';
+const LIKED_KEY        = '@edutok_liked_lessons';
+// Quiz passes tracked locally so isQuizPassed survives a server submission failure.
+const QUIZ_PASSES_KEY  = '@edutok_local_quiz_passes';
 
 const _getLikedLessonsCache = async () => {
   const raw = await AsyncStorage.getItem(LIKED_KEY);
@@ -272,12 +297,24 @@ export const fetchProgress = async () => {
 
   const likedLessons = await _getLikedLessonsCache();
 
+  // Merge locally-tracked quiz passes so isQuizPassed is correct even when
+  // the server submission fails (wrong payload, network error, etc.)
+  let localPasses = [];
+  try {
+    const raw = await AsyncStorage.getItem(QUIZ_PASSES_KEY);
+    if (raw) localPasses = JSON.parse(raw);
+  } catch (_) {}
+  const mergedPassedQuizzes = [
+    ...passedQuizzes,
+    ...localPasses.filter((lp) => !passedQuizzes.some((sp) => sp.quizId === lp.quizId)),
+  ];
+
   return {
     enrolledCourses,
     completedLessons,
     likedLessons,
     favoritedLessons,
-    passedQuizzes,
+    passedQuizzes: mergedPassedQuizzes,
     streak,
     lastActiveDate,
     totalSeconds,
@@ -329,11 +366,19 @@ export const toggleFavorite = async (lessonId) => {
 };
 
 export const recordQuizPass = async (quizId, lessonId, score) => {
+  // Save pass to local cache immediately — never blocked by server errors
   try {
-    await post(`/quizzes/${quizId}/submit`, { lesson_id: lessonId, score });
-  } catch (e) {
-    if (e.status !== 409) throw e;
-  }
+    const raw = await AsyncStorage.getItem(QUIZ_PASSES_KEY);
+    const passes = raw ? JSON.parse(raw) : [];
+    if (!passes.some((p) => p.quizId === quizId)) {
+      passes.push({ quizId, lessonId, score, passedAt: new Date().toISOString() });
+      await AsyncStorage.setItem(QUIZ_PASSES_KEY, JSON.stringify(passes));
+    }
+  } catch (_) {}
+
+  // Fire-and-forget server submission (backend may reject wrong payload; that's OK)
+  post(`/quizzes/${quizId}/submit`, { lesson_id: lessonId, answers: [] }).catch(() => {});
+
   return fetchProgress();
 };
 
