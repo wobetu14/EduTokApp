@@ -227,7 +227,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
             index={index}
             isCompleted={isLessonCompleted(lesson.id)}
             onPress={() => handleLessonPress(lesson, index)}
-            style={{ width: lessonCardW }}
+            style={{ width: lessonCardW, height: Math.round(lessonCardW * 4 / 3) }}
           />
         ))}
       </View>

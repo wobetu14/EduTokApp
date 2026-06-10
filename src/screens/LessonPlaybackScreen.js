@@ -46,15 +46,14 @@ const TextContent = ({ lesson }) => (
     showsVerticalScrollIndicator={false}
   >
     <AppText style={styles.lessonTitle}>{lesson.title}</AppText>
-    <AppText style={styles.bodyText}>{lesson.content.body}</AppText>
+    <AppText style={styles.bodyText}>{lesson.content?.body ?? ''}</AppText>
   </ScrollView>
 );
 
 const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
   const [activeIdx, setActiveIdx] = useState(0);
-  const images = lesson.content.images ?? [
-    { uri: lesson.content.imageUri, caption: lesson.content.caption },
-  ];
+  const raw = lesson.content?.images ?? (lesson.content?.imageUri ? [{ uri: lesson.content.imageUri, caption: lesson.content.caption }] : []);
+  const images = raw.filter((img) => img?.uri);
   return (
     <View style={styles.imageContainer}>
       <ScrollView
@@ -91,7 +90,7 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
 const VideoContent = ({ lesson, active, onProgress }) => (
   <View style={styles.videoContainer}>
     <VideoPlayer
-      videoUri={lesson.content.videoUri}
+      videoUri={lesson.content?.videoUri ?? null}
       active={active}
       onProgress={onProgress}
     />

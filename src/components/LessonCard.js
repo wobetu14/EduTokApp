@@ -46,7 +46,6 @@ const LessonCard = ({ lesson, index, isCompleted, onPress, style }) => {
 
 const styles = StyleSheet.create({
   card: {
-    aspectRatio: 3 / 4,
     borderRadius: SIZES.borderRadius,
     overflow: 'hidden',
     backgroundColor: COLORS.surface,

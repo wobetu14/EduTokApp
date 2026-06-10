@@ -21,13 +21,17 @@ const mapContentJson = (type, raw) => {
   if (!raw) return {};
   if (type === 'text')  return { body: raw.body ?? raw };
   if (type === 'image') {
-    const images = Array.isArray(raw) ? raw : [raw];
+    // Normalise: backend may store as array, or as { images: [...] }, or a single object
+    const arr = Array.isArray(raw) ? raw : (raw?.images ? raw.images : [raw]);
+    const images = arr.map((img) => ({
+      uri:     img.uri ?? img.url ?? img.src ?? img.image_url ?? '',
+      caption: img.caption ?? img.text ?? '',
+    }));
     return { images };
   }
   if (type === 'video') {
     return {
-      youtubeId: raw.youtubeId ?? raw.youtube_id ?? null,
-      videoUri:  raw.videoUri  ?? raw.video_url   ?? null,
+      videoUri: raw.videoUri ?? raw.video_url ?? raw.url ?? null,
     };
   }
   return raw;
@@ -43,7 +47,7 @@ const mapLesson = (l) => ({
   order:         l.order_index   ?? 0,
   thumbnail:     l.thumbnail_url ?? '',
   hasQuiz:       l.has_quiz      ?? false,
-  quiz:          l.quiz          ?? null,
+  quiz:          l.quiz ? { id: l.quiz.id, type: l.quiz.type, questions: l.quiz.questions_json ?? [] } : null,
   likesCount:    l.likes_count    ?? 0,
   savesCount:    l.saves_count    ?? 0,
   commentsCount: l.comments_count ?? 0,
@@ -68,6 +72,7 @@ const mapCourse = (c, lessons = []) => ({
   totalDuration:  c.total_duration_secs ?? 0,
   lessonIds:      lessons.map((l) => l.id),
   _lessons:       lessons,
+  _isEnrolled:    c.is_enrolled ?? false,
 });
 
 const mapOrganization = (o) => ({
@@ -193,7 +198,8 @@ export const fetchCourses = async () => {
 export const fetchCourseDetail = async (courseId) => {
   const data = await get(`/courses/${courseId}`);
   const raw  = data.data ?? data.course ?? data;
-  const lessons = (raw.lessons ?? []).map(mapLesson);
+  // Inject course_id into each lesson; the GET /courses/:id SELECT omits it
+  const lessons = (raw.lessons ?? []).map((l) => mapLesson({ ...l, course_id: courseId }));
   return mapCourse(raw, lessons);
 };
 
@@ -221,12 +227,11 @@ export const fetchLessons = async () => _cachedLessons;
 // --- Progress ---
 
 export const fetchProgress = async () => {
-  const [completions, saves, quizHistory, streakData, enrolledData] = await Promise.all([
+  const [completions, saves, quizHistory, streakData] = await Promise.all([
     get('/progress/me/completions').catch(() => ({})),
     get('/progress/me/saves').catch(() => ({})),
     get('/progress/me/quiz-history').catch(() => ({})),
     get('/progress/me/streak').catch(() => ({})),
-    get('/courses?enrolled=true&limit=200').catch(() => ({})),
   ]);
 
   const completedLessons = ((completions.data ?? completions.completions ?? []) || []).map((c) => ({
@@ -251,9 +256,8 @@ export const fetchProgress = async () => {
   const totalSeconds   = sd.total_seconds_learned ?? sd.totalSeconds  ?? 0;
   const lastActiveDate = sd.last_active_date   ?? sd.lastActiveDate ?? null;
 
-  const enrolledCourses = ((enrolledData.data ?? enrolledData.courses ?? []) || []).map(
-    (c) => c.id ?? c.course_id,
-  );
+  // enrolledCourses is built in CourseContext from is_enrolled on each course detail response
+  const enrolledCourses = [];
 
   const likedLessons = await _getLikedLessonsCache();
 

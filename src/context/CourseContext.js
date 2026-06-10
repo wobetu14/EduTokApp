@@ -102,7 +102,17 @@ export const CourseProvider = ({ children }) => {
 
         // Merge server-side liked flags into progress
         const likedLessons = lessons.filter((l) => l.isLiked).map((l) => l.id);
-        const progressWithLikes = { ...progress, likedLessons };
+
+        // Build enrolled courses from is_enrolled on each GET /courses/:id response
+        const enrolledFromDetails = enriched.filter((c) => c._isEnrolled).map((c) => c.id);
+        const progressWithLikes = {
+          ...progress,
+          likedLessons,
+          enrolledCourses: Array.from(new Set([
+            ...progress.enrolledCourses,
+            ...enrolledFromDetails,
+          ])),
+        };
 
         dispatch({
           type: 'LOADED',
@@ -138,7 +148,17 @@ export const CourseProvider = ({ children }) => {
 
   const enroll = useCallback(async (courseId) => {
     const progress = await api.enrollCourse(courseId);
-    dispatch({ type: 'SET_PROGRESS', progress });
+    // Guarantee the just-enrolled course is in enrolledCourses regardless of what
+    // fetchProgress returns (the backend enrolled-courses query may lag or fail)
+    dispatch({
+      type: 'SET_PROGRESS',
+      progress: {
+        ...progress,
+        enrolledCourses: progress.enrolledCourses.includes(courseId)
+          ? progress.enrolledCourses
+          : [...progress.enrolledCourses, courseId],
+      },
+    });
   }, []);
 
   const completeLesson = useCallback(async (lessonId, courseId, durationSeconds) => {
