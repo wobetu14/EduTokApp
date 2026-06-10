@@ -1,23 +1,48 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableWithoutFeedback, Animated, ActivityIndicator } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 
 const VideoPlayer = ({ videoUri, active, onProgress }) => {
-  const videoRef   = useRef(null);
-  const [userPaused, setUserPaused] = useState(false);
-  const [loading,    setLoading]    = useState(true);
+  const [userPaused, setUserPaused]   = useState(false);
+  const [loading,    setLoading]      = useState(true);
   const [flashedIcon, setFlashedIcon] = useState('pause');
   const iconOpacity = useRef(new Animated.Value(0)).current;
 
-  const isPlaying = active && !userPaused;
+  const player = useVideoPlayer(videoUri ?? null, (p) => {
+    p.loop                   = true;
+    p.timeUpdateEventInterval = 1; // emit timeUpdate every 1 s
+    if (active) p.play();
+  });
 
-  // Sync play/pause with the active + userPaused state
+  // Sync play / pause with parent active flag and user tap
   useEffect(() => {
-    if (!videoRef.current) return;
-    if (isPlaying) { videoRef.current.playAsync().catch(() => {}); }
-    else           { videoRef.current.pauseAsync().catch(() => {}); }
-  }, [isPlaying]);
+    if (!player) return;
+    const shouldPlay = active && !userPaused;
+    if (shouldPlay) { player.play();  }
+    else            { player.pause(); }
+  }, [active, userPaused]);
+
+  // Loading state: clear spinner once the player has buffered enough to play
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay') setLoading(false);
+      if (status === 'loading')     setLoading(true);
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  // Progress: report 0–1 fraction via onProgress
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener('timeUpdate', ({ currentTime }) => {
+      if (player.duration > 0) {
+        onProgress?.(currentTime / player.duration);
+      }
+    });
+    return () => sub.remove();
+  }, [player, onProgress]);
 
   const flash = (name) => {
     setFlashedIcon(name);
@@ -38,32 +63,22 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
       <View style={styles.container}>
-        <Video
-          ref={videoRef}
-          source={{ uri: videoUri }}
+        <VideoView
+          player={player}
           style={styles.fill}
-          resizeMode={ResizeMode.COVER}
-          isLooping
-          shouldPlay={isPlaying}
-          useNativeControls={false}
-          onPlaybackStatusUpdate={(s) => {
-            if (s.isLoaded) {
-              setLoading(false);
-              if (s.durationMillis > 0) {
-                onProgress?.(s.positionMillis / s.durationMillis);
-              }
-            }
-          }}
+          contentFit="cover"
+          nativeControls={false}
+          allowsFullscreen={false}
         />
 
-        {/* Loading spinner — shown until video is ready */}
+        {/* Spinner while buffering */}
         {loading && (
           <View style={styles.loadingOverlay} pointerEvents="none">
             <ActivityIndicator size="large" color="rgba(255,255,255,0.8)" />
           </View>
         )}
 
-        {/* Play/Pause flash icon */}
+        {/* Tap-to-pause/play flash icon */}
         <Animated.View
           style={[styles.iconOverlay, { opacity: iconOpacity }]}
           pointerEvents="none"
