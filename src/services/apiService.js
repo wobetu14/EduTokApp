@@ -47,7 +47,18 @@ const mapLesson = (l) => ({
   order:         l.order_index   ?? 0,
   thumbnail:     l.thumbnail_url ?? '',
   hasQuiz:       l.has_quiz      ?? false,
-  quiz:          l.quiz ? { id: l.quiz.id, type: l.quiz.type, questions: l.quiz.questions_json ?? [] } : null,
+  quiz:          l.quiz ? {
+    id:        l.quiz.id,
+    type:      l.quiz.type,
+    questions: (l.quiz.questions_json ?? []).map((q) => ({
+      ...q,
+      // Normalize question text — backend may store as 'question', 'prompt', etc.
+      text: q.text ?? q.question ?? q.prompt ?? q.title ?? q.stem ?? '',
+      // Inject quiz-level type (lowercase) into each question if not already present.
+      // Backend uses camelCase (multipleChoice, imageMatching); QuizModal expects lowercase.
+      type: (q.type ?? l.quiz.type ?? '').toLowerCase().replace(/[-_\s]/g, ''),
+    })),
+  } : null,
   likesCount:    l.likes_count    ?? 0,
   savesCount:    l.saves_count    ?? 0,
   commentsCount: l.comments_count ?? 0,

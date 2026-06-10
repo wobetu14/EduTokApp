@@ -17,6 +17,7 @@ import {
   Animated,
   StatusBar,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -208,6 +209,16 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const slideWidth = isWide ? Math.min(W, 430) : W;
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
+
+  // When lessons load, resolve the correct index by lessonId (more reliable than
+  // the position index, which can drift if lesson order changes between renders)
+  const didResolveRef = useRef(false);
+  useEffect(() => {
+    if (didResolveRef.current || !lessons.length || !lessonId) return;
+    didResolveRef.current = true;
+    const idx = lessons.findIndex((l) => l.id === lessonId);
+    if (idx >= 0 && idx !== currentIndex) setCurrentIndex(idx);
+  }, [lessons.length]); // intentionally only fires when list becomes non-empty
   const [showQuiz, setShowQuiz] = useState(false);
   const [pendingNext, setPendingNext] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -225,6 +236,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const tryGoNextRef = useRef(null);
   const goToPrevRef = useRef(null);
   const currentLessonTypeRef = useRef(null);
+  const isAnimatingRef = useRef(false);
 
   const enrolled = isEnrolled(courseId);
 
@@ -240,26 +252,32 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   }, [currentIndex]);
 
   const animateToNext = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
     setVideoActive(false);
     Animated.timing(translateY, {
       toValue: -slideH,
       duration: 260,
       useNativeDriver: true,
-    }).start(() => {
-      setCurrentIndex((i) => i + 1);
+    }).start(({ finished }) => {
+      isAnimatingRef.current = false;
+      if (finished) setCurrentIndex((i) => i + 1);
       translateY.setValue(0);
       setVideoActive(true);
     });
   }, [translateY, slideH]);
 
   const animateToPrev = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
     setVideoActive(false);
     Animated.timing(translateY, {
       toValue: slideH,
       duration: 260,
       useNativeDriver: true,
-    }).start(() => {
-      setCurrentIndex((i) => i - 1);
+    }).start(({ finished }) => {
+      isAnimatingRef.current = false;
+      if (finished) setCurrentIndex((i) => i - 1);
       translateY.setValue(0);
       setVideoActive(true);
     });
@@ -302,9 +320,14 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         return Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx);
       },
       onPanResponderMove: (_, g) => {
+        if (isAnimatingRef.current) return;
         translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
+        if (isAnimatingRef.current) {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+          return;
+        }
         if (g.dy < -SWIPE_THRESHOLD) {
           tryGoNextRef.current?.();
         } else if (g.dy > SWIPE_THRESHOLD) {
@@ -338,7 +361,13 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     } catch (_) {}
   }, [lesson, course]);
 
-  if (!lesson) return null;
+  if (!lesson) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

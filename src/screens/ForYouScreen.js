@@ -173,6 +173,8 @@ const ForYouScreen = ({ navigation }) => {
   const slideWidthRef = useRef(slideWidth);
   // Updated every render so infinite-scroll modulo always has latest feed length
   const feedLengthRef = useRef(0);
+  // Prevents concurrent animations that cause black-screen / double-index-jump
+  const isAnimatingRef = useRef(false);
 
   // Build course-wise feed — one entry per course (first lesson as preview).
   // Swiping navigates between courses, not individual lessons.
@@ -217,9 +219,16 @@ const ForYouScreen = ({ navigation }) => {
         return Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
       },
       onPanResponderMove: (_, g) => {
+        // Block finger tracking while a slide animation is in flight
+        if (isAnimatingRef.current) return;
         translateY.setValue(g.dy);
       },
       onPanResponderRelease: (_, g) => {
+        // Ignore release if animation is already running — snap back
+        if (isAnimatingRef.current) {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+          return;
+        }
         if (g.dy < -SWIPE_THRESHOLD) {
           hideTabBar();
           tryGoNextRef.current?.();
@@ -251,28 +260,37 @@ const ForYouScreen = ({ navigation }) => {
   }, [currentIndex]);
 
   const animateToNext = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
     setVideoActive(false);
     Animated.timing(translateY, {
       toValue: -slideH,
       duration: 260,
       useNativeDriver: true,
-    }).start(() => {
-      // Infinite: wrap around to first when past the end
-      setCurrentIndex((i) => (i + 1) % feedLengthRef.current);
+    }).start(({ finished }) => {
+      isAnimatingRef.current = false;
+      // Always reset position and re-enable video; only advance index on clean finish
+      if (finished) {
+        setCurrentIndex((i) => (i + 1) % feedLengthRef.current);
+      }
       translateY.setValue(0);
       setVideoActive(true);
     });
   }, [translateY, slideH]);
 
   const animateToPrev = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
     setVideoActive(false);
     Animated.timing(translateY, {
       toValue: slideH,
       duration: 260,
       useNativeDriver: true,
-    }).start(() => {
-      // Infinite: wrap around to last when before the start
-      setCurrentIndex((i) => (i - 1 + feedLengthRef.current) % feedLengthRef.current);
+    }).start(({ finished }) => {
+      isAnimatingRef.current = false;
+      if (finished) {
+        setCurrentIndex((i) => (i - 1 + feedLengthRef.current) % feedLengthRef.current);
+      }
       translateY.setValue(0);
       setVideoActive(true);
     });

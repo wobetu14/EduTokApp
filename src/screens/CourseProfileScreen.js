@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -77,16 +77,27 @@ const CourseProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleLessonPress = async (lesson, index) => {
-    if (!enrolled) {
-      await handleEnroll();
-    }
+  const isNavigatingRef = useRef(false);
+
+  const handleLessonPress = useCallback((lesson, index) => {
+    // Guard against double-taps while navigation is transitioning
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    setTimeout(() => { isNavigatingRef.current = false; }, 800);
+
+    // Navigate immediately — never block on the enrollment API call.
+    // LessonPlaybackScreen has its own enroll button if not yet enrolled.
     navigation.navigate('LessonPlayback', {
       courseId,
       lessonId: lesson.id,
       startIndex: index,
     });
-  };
+
+    // Enroll in background if not already enrolled
+    if (!enrolled) {
+      handleEnroll().catch(() => {});
+    }
+  }, [enrolled, courseId, navigation, handleEnroll]);
 
   const handleViewCertificate = () => {
     const issuedAt = course.lessonIds
