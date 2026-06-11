@@ -78,15 +78,26 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
           </View>
         )}
 
-        {/* Tap-to-pause/play flash icon */}
-        <Animated.View
-          style={[styles.iconOverlay, { opacity: iconOpacity }]}
-          pointerEvents="none"
-        >
-          <View style={styles.iconCircle}>
-            <Ionicons name={flashedIcon} size={44} color="#fff" />
+        {/* Persistent play icon while paused — makes the paused state obvious */}
+        {userPaused && !loading && (
+          <View style={styles.iconOverlay} pointerEvents="none">
+            <View style={styles.iconCircle}>
+              <Ionicons name="play" size={44} color="#fff" />
+            </View>
           </View>
-        </Animated.View>
+        )}
+
+        {/* Tap-to-pause/play flash icon */}
+        {!userPaused && (
+          <Animated.View
+            style={[styles.iconOverlay, { opacity: iconOpacity }]}
+            pointerEvents="none"
+          >
+            <View style={styles.iconCircle}>
+              <Ionicons name={flashedIcon} size={44} color="#fff" />
+            </View>
+          </Animated.View>
+        )}
       </View>
     </TouchableWithoutFeedback>
   );

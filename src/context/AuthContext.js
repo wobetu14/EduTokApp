@@ -26,7 +26,13 @@ const reducer = (state, action) => {
         isLoading: false,
       };
     case 'SIGN_IN':
-      return { ...state, user: action.user, isSignedIn: true };
+      return {
+        ...state,
+        user: action.user,
+        isSignedIn: true,
+        // Server is the source of truth — returning users skip onboarding
+        hasOnboarded: !!action.user?.onboardingCompleted,
+      };
     case 'SIGN_OUT':
       return { ...state, user: null, isSignedIn: false, hasOnboarded: false };
     case 'SET_ONBOARDED':
@@ -46,20 +52,44 @@ export const AuthProvider = ({ children }) => {
     setSessionExpiredHandler(() => dispatch({ type: 'SIGN_OUT' }));
 
     const restore = async () => {
+      const token = await AsyncStorage.getItem('@edutok_access_token').catch(() => null);
+      const hasOnboarded = await storage.getHasOnboarded().catch(() => false);
+      if (!token) {
+        dispatch({ type: 'RESTORE', user: null, hasOnboarded });
+        return;
+      }
       try {
-        const token = await AsyncStorage.getItem('@edutok_access_token');
-        const hasOnboarded = await storage.getHasOnboarded();
-        if (!token) {
-          dispatch({ type: 'RESTORE', user: null, hasOnboarded });
-          return;
-        }
         // Token exists — validate and fetch fresh user data
         const user = await api.fetchCurrentUser();
         if (user?.language) setLanguage(user.language);
-        dispatch({ type: 'RESTORE', user, hasOnboarded });
-      } catch {
-        await clearTokens();
-        dispatch({ type: 'RESTORE', user: null, hasOnboarded: false });
+        // Server flag is authoritative; the local flag is an offline fallback
+        const onboarded = hasOnboarded || !!user?.onboardingCompleted;
+        if (onboarded && !hasOnboarded) await storage.setHasOnboarded(true);
+        // Cache the profile so an offline launch can restore the session
+        await storage.saveUser(user);
+        dispatch({ type: 'RESTORE', user, hasOnboarded: onboarded });
+      } catch (e) {
+        // Network/server trouble is NOT a reason to log the user out — fall
+        // back to the cached profile and stay signed in. Only genuine auth
+        // failures (revoked/expired session, non-learner) end the session.
+        const isTransient = e?.status === 0 || e?.status >= 500;
+        const cached = isTransient ? await storage.getUser().catch(() => null) : null;
+        if (cached) {
+          if (cached.language) setLanguage(cached.language);
+          dispatch({
+            type: 'RESTORE',
+            user: cached,
+            hasOnboarded: hasOnboarded || !!cached.onboardingCompleted,
+          });
+          return;
+        }
+        // Keep tokens on transient failures so the next launch can retry;
+        // clear them only for real auth failures
+        if (!isTransient) {
+          await clearTokens();
+          await storage.clearUser().catch(() => {});
+        }
+        dispatch({ type: 'RESTORE', user: null, hasOnboarded: isTransient ? hasOnboarded : false });
       }
     };
     restore();
@@ -68,6 +98,8 @@ export const AuthProvider = ({ children }) => {
   const signIn = useCallback(async (username, password) => {
     const user = await api.signIn(username, password);
     if (user?.language) setLanguage(user.language);
+    if (user?.onboardingCompleted) await storage.setHasOnboarded(true);
+    await storage.saveUser(user);
     dispatch({ type: 'SIGN_IN', user });
     if (user?.notificationsEnabled !== false) {
       const status = await getPermissionStatus();
@@ -89,8 +121,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const completeOnboarding = useCallback(async (preferences) => {
-    const updated = await api.updateUser({ preferences });
+    const updated = await api.updatePreferences({ preferences, onboardingCompleted: true });
     await storage.setHasOnboarded(true);
+    await storage.saveUser(updated);
     dispatch({ type: 'UPDATE_USER', user: updated });
     dispatch({ type: 'SET_ONBOARDED' });
   }, []);
@@ -98,6 +131,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = useCallback(async (updates) => {
     const updated = await api.updateUser(updates);
     if (updates.language) setLanguage(updates.language);
+    await storage.saveUser(updated);
     dispatch({ type: 'UPDATE_USER', user: updated });
     return updated;
   }, []);

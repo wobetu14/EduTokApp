@@ -11,9 +11,12 @@ const mapUser = (u) => ({
   bio:                  u.bio ?? '',
   avatar:               u.avatar_url ?? `https://picsum.photos/seed/${u.username}/200/200`,
   preferences:          u.preferences?.preferred_categories ?? [],
+  onboardingCompleted:  u.preferences?.onboarding_completed ?? false,
   phoneVerified:        u.is_phone_verified ?? false,
   language:             u.lang_pref ?? 'en',
-  notificationsEnabled: u.notifications_enabled ?? true,
+  notificationsEnabled: u.settings?.notifications_enabled ?? u.notifications_enabled ?? true,
+  fontScale:            u.settings?.font_scale ?? null,
+  highContrast:         u.settings?.high_contrast ?? null,
   createdAt:            u.created_at,
 });
 
@@ -31,7 +34,8 @@ const mapContentJson = (type, raw) => {
   }
   if (type === 'video') {
     return {
-      videoUri: raw.videoUri ?? raw.video_url ?? raw.url ?? null,
+      videoUri:  raw.videoUri ?? raw.video_url ?? raw.url ?? null,
+      youtubeId: raw.youtubeId ?? null,
     };
   }
   return raw;
@@ -179,7 +183,9 @@ export const signIn = async (username, password) => {
     throw new Error('This app is for students only. Please use the admin dashboard to manage content.');
   }
   await saveTokens(d.accessToken, d.refreshToken);
-  return mapUser(d.user);
+  // Login response is a bare user row — re-fetch /users/me so the mapped user
+  // includes the preferences/settings relations (onboardingCompleted, etc.)
+  return fetchCurrentUser();
 };
 
 export const signUp = async ({ username, fullName, phone, password }) => {
@@ -210,17 +216,40 @@ export const signOut = async () => {
 };
 
 export const updateUser = async (updates) => {
-  const body = {};
-  if (updates.fullName             !== undefined) body.full_name             = updates.fullName;
-  if (updates.bio                  !== undefined) body.bio                   = updates.bio;
-  if (updates.avatar               !== undefined) body.avatar_url            = updates.avatar;
-  if (updates.language             !== undefined) body.lang_pref             = updates.language;
-  if (updates.notificationsEnabled !== undefined) body.notifications_enabled = updates.notificationsEnabled;
-  if (updates.preferences          !== undefined) body.preferred_categories  = updates.preferences;
+  // Backend splits these across three endpoints; PATCH /users/me silently
+  // strips any field not in its schema, so each group must go to its own route.
+  const profile = {};
+  if (updates.fullName !== undefined) profile.full_name  = updates.fullName;
+  if (updates.bio      !== undefined) profile.bio        = updates.bio;
+  if (updates.avatar   !== undefined) profile.avatar_url = updates.avatar;
+  if (updates.language !== undefined) profile.lang_pref  = updates.language;
 
-  const data = await patch('/users/me', body);
-  const u = data.data ?? data;
-  return mapUser(u.user ?? u);
+  const settings = {};
+  if (updates.notificationsEnabled !== undefined) settings.notifications_enabled = updates.notificationsEnabled;
+
+  if (Object.keys(profile).length  > 0) await patch('/users/me', profile);
+  if (Object.keys(settings).length > 0) await patch('/users/me/settings', settings);
+  if (updates.preferences !== undefined) {
+    await patch('/users/me/preferences', { preferred_categories: updates.preferences });
+  }
+  return fetchCurrentUser();
+};
+
+export const updatePreferences = async ({ preferences, onboardingCompleted }) => {
+  const body = {};
+  if (preferences         !== undefined) body.preferred_categories = preferences;
+  if (onboardingCompleted !== undefined) body.onboarding_completed = onboardingCompleted;
+  await patch('/users/me/preferences', body);
+  return fetchCurrentUser();
+};
+
+// Fire-and-forget device/a11y settings sync — local state is the UX source of truth.
+export const updateSettings = ({ fontScale, highContrast }) => {
+  const body = {};
+  if (fontScale    !== undefined) body.font_scale    = fontScale;
+  if (highContrast !== undefined) body.high_contrast = highContrast;
+  if (Object.keys(body).length === 0) return Promise.resolve();
+  return patch('/users/me/settings', body).catch(() => {});
 };
 
 // --- Content ---
@@ -326,6 +355,10 @@ export const enrollCourse = async (courseId) => {
   return fetchProgress();
 };
 
+export const unenrollCourse = async (courseId) => {
+  await del(`/courses/${courseId}/enroll`);
+};
+
 export const completeLesson = async (lessonId, courseId, durationSeconds) => {
   try {
     await post(`/lessons/${lessonId}/complete`, { course_id: courseId });
@@ -341,31 +374,51 @@ export const completeLesson = async (lessonId, courseId, durationSeconds) => {
   return fetchProgress();
 };
 
+// 409 (already liked/saved) and 404 (already removed) mean the server is
+// already in the desired state — treat them as success, not failure.
+const _isAlreadyInState = (e) => e?.status === 409 || e?.status === 404;
+
 export const toggleLike = async (lessonId) => {
   const current = await _getLikedLessonsCache();
   const isLiked = current.includes(lessonId);
   if (isLiked) {
-    await del(`/engagement/lessons/${lessonId}/like`);
+    try {
+      await del(`/engagement/lessons/${lessonId}/like`);
+    } catch (e) {
+      if (!_isAlreadyInState(e)) throw e;
+    }
     await _setLikedLessonsCache(current.filter((id) => id !== lessonId));
-  } else {
+    return { liked: false };
+  }
+  try {
     await post(`/engagement/lessons/${lessonId}/like`, {});
-    await _setLikedLessonsCache([...current, lessonId]);
+  } catch (e) {
+    if (!_isAlreadyInState(e)) throw e;
   }
-  return fetchProgress();
+  await _setLikedLessonsCache([...current, lessonId]);
+  return { liked: true };
 };
 
-export const toggleFavorite = async (lessonId) => {
-  const progress = await fetchProgress();
-  const isSaved  = progress.favoritedLessons.includes(lessonId);
-  if (isSaved) {
-    await del(`/engagement/lessons/${lessonId}/save`);
-  } else {
+// Caller (CourseContext) passes the current saved state — avoids the previous
+// full fetchProgress() round-trip just to determine the toggle direction.
+export const toggleFavorite = async (lessonId, isCurrentlySaved) => {
+  if (isCurrentlySaved) {
+    try {
+      await del(`/engagement/lessons/${lessonId}/save`);
+    } catch (e) {
+      if (!_isAlreadyInState(e)) throw e;
+    }
+    return { saved: false };
+  }
+  try {
     await post(`/engagement/lessons/${lessonId}/save`, {});
+  } catch (e) {
+    if (!_isAlreadyInState(e)) throw e;
   }
-  return fetchProgress();
+  return { saved: true };
 };
 
-export const recordQuizPass = async (quizId, lessonId, score) => {
+export const recordQuizPass = async (quizId, lessonId, score, answers = []) => {
   // Save pass to local cache immediately — never blocked by server errors
   try {
     const raw = await AsyncStorage.getItem(QUIZ_PASSES_KEY);
@@ -376,11 +429,15 @@ export const recordQuizPass = async (quizId, lessonId, score) => {
     }
   } catch (_) {}
 
-  // Fire-and-forget server submission (backend may reject wrong payload; that's OK)
-  post(`/quizzes/${quizId}/submit`, { lesson_id: lessonId, answers: [] }).catch(() => {});
+  // Fire-and-forget server submission with the user's real answers so the
+  // backend grades and records the pass (quiz history, Quiz Master badge).
+  post(`/quizzes/${quizId}/submit`, { answers }).catch(() => {});
 
   return fetchProgress();
 };
+
+export const recordShare = (lessonId) =>
+  post(`/engagement/lessons/${lessonId}/share`, { platform: 'native' }).catch(() => {});
 
 // --- Comments ---
 
@@ -416,4 +473,29 @@ export const fetchBadges = async () => {
 
 export const saveBadges = async (_badges) => {
   // Server manages badge awarding; retained for interface compatibility.
+};
+
+// --- Certificates ---
+
+const mapCertificate = (c) => ({
+  id:                c.id,
+  courseId:          c.course_id,
+  certificateNumber: c.certificate_number,
+  studentName:       c.student_name,
+  courseName:        c.course_name,
+  organizationName:  c.organization_name,
+  authorName:        c.instructor_name,
+  category:          c.category,
+  difficulty:        c.difficulty,
+  issuedAt:          c.issued_at,
+});
+
+export const fetchCertificates = async () => {
+  try {
+    const data = await get('/progress/me/certificates');
+    const list = data.data ?? data.certificates ?? data;
+    return Array.isArray(list) ? list.map(mapCertificate) : [];
+  } catch {
+    return [];
+  }
 };

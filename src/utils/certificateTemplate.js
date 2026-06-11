@@ -27,7 +27,7 @@ const formatDate = (isoString) => {
 export const buildCertificateHtml = (cert) => {
   const c = CATEGORY_COLORS[cert.category] || DEFAULT_COLORS;
   const date = formatDate(cert.issuedAt);
-  const certIdShort = cert.id.slice(-10).toUpperCase();
+  const certIdValue = cert.certificateNumber || `EDUTOK-${cert.id.slice(-10).toUpperCase()}`;
 
   return `<!DOCTYPE html>
 <html>
@@ -184,7 +184,7 @@ export const buildCertificateHtml = (cert) => {
   <!-- Certificate ID strip -->
   <div class="cert-id-strip">
     <div class="cert-id-text">Certificate ID</div>
-    <div class="cert-id-value">EDUTOK-${certIdShort}</div>
+    <div class="cert-id-value">${certIdValue}</div>
     <div class="cert-id-text">Verify at edutok.app/verify</div>
   </div>
 </div>

@@ -40,6 +40,8 @@ describe('mapUser — via signIn', () => {
 
   beforeEach(() => {
     post.mockResolvedValue({ data: { accessToken: 'a', refreshToken: 'r', user: rawUser } });
+    // signIn re-fetches the full user from /users/me after saving tokens
+    get.mockResolvedValue({ data: rawUser });
     saveTokens.mockResolvedValue();
   });
 
@@ -55,9 +57,30 @@ describe('mapUser — via signIn', () => {
 
   it('falls back to picsum URL when avatar_url is absent', async () => {
     const noAvatar = { ...rawUser, avatar_url: null };
-    post.mockResolvedValue({ data: { accessToken: 'a', refreshToken: 'r', user: noAvatar } });
+    get.mockResolvedValue({ data: noAvatar });
     const user = await api.signIn('alice', 'pass');
     expect(user.avatar).toMatch(/picsum\.photos/);
+  });
+
+  it('maps preferences.onboarding_completed and settings fields', async () => {
+    get.mockResolvedValue({
+      data: {
+        ...rawUser,
+        preferences: { preferred_categories: [], onboarding_completed: true },
+        settings: { notifications_enabled: false, font_scale: 'lg', high_contrast: true },
+      },
+    });
+    const user = await api.signIn('alice', 'pass');
+    expect(user.onboardingCompleted).toBe(true);
+    expect(user.notificationsEnabled).toBe(false);
+    expect(user.fontScale).toBe('lg');
+    expect(user.highContrast).toBe(true);
+  });
+
+  it('defaults onboardingCompleted to false when preferences relation is absent', async () => {
+    get.mockResolvedValue({ data: { ...rawUser, preferences: undefined } });
+    const user = await api.signIn('alice', 'pass');
+    expect(user.onboardingCompleted).toBe(false);
   });
 });
 

@@ -1,12 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, HIGH_CONTRAST_COLORS, FONT_SCALE_MAP, STORAGE_KEYS } from '../utils/constants';
+import * as api from '../services/apiService';
+import { useAuth } from './AuthContext';
 
 const AccessibilityContext = createContext(null);
 
 export const AccessibilityProvider = ({ children }) => {
   const [fontScale, setFontScaleState] = useState('md');
   const [highContrast, setHighContrastState] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.a11y).then((raw) => {
@@ -24,14 +27,29 @@ export const AccessibilityProvider = ({ children }) => {
     AsyncStorage.setItem(STORAGE_KEYS.a11y, JSON.stringify({ fontScale: fontScaleVal, highContrast: highContrastVal }));
   }, []);
 
+  // Hydrate from server settings on sign-in so a11y prefs follow the account
+  useEffect(() => {
+    if (!user) return;
+    if (user.fontScale != null || user.highContrast != null) {
+      const fs = user.fontScale    != null ? user.fontScale    : fontScale;
+      const hc = user.highContrast != null ? user.highContrast : highContrast;
+      setFontScaleState(fs);
+      setHighContrastState(hc);
+      persist(fs, hc);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const setFontScale = useCallback((val) => {
     setFontScaleState(val);
     persist(val, highContrast);
+    api.updateSettings({ fontScale: val });
   }, [highContrast, persist]);
 
   const setHighContrast = useCallback((val) => {
     setHighContrastState(val);
     persist(fontScale, val);
+    api.updateSettings({ highContrast: val });
   }, [fontScale, persist]);
 
   return (

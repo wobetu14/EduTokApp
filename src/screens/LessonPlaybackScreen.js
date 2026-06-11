@@ -198,7 +198,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
     getLessonsForCourse, toggleLike, toggleFavorite,
-    enroll, completeLesson, recordQuizPass,
+    enroll, completeLesson, recordQuizPass, recordShare,
   } = useCourses();
 
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
@@ -347,9 +347,9 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     })
   ).current;
 
-  const handleQuizPass = useCallback(async (quizId, score) => {
+  const handleQuizPass = useCallback(async (quizId, score, _pct, answers) => {
     try {
-      await recordQuizPass(quizId, lesson.id, score);
+      await recordQuizPass(quizId, lesson.id, score, answers);
     } catch (_) {
       // Never let a server error block the quiz flow — pass is tracked locally
     }
@@ -366,12 +366,13 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const handleShare = useCallback(async () => {
     if (!lesson || !course) return;
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `📚 Check out "${lesson.title}" from "${course.title}" on EduTok!`,
         title: lesson.title,
       });
+      if (result.action === Share.sharedAction) recordShare(lesson.id);
     } catch (_) {}
-  }, [lesson, course]);
+  }, [lesson, course, recordShare]);
 
   if (!lesson) {
     return (

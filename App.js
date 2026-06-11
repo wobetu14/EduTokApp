@@ -58,11 +58,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" translucent backgroundColor="transparent" />
-      <AccessibilityProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <AccessibilityProvider>
           <AppInner />
-        </AuthProvider>
-      </AccessibilityProvider>
+        </AccessibilityProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

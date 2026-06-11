@@ -4,6 +4,26 @@ import { BASE_URL } from '../utils/apiConfig';
 const ACCESS_KEY  = '@edutok_access_token';
 const REFRESH_KEY = '@edutok_refresh_token';
 
+// Abort any request that hasn't completed within this window so dead
+// connections surface as a clear network error instead of hanging forever.
+const REQUEST_TIMEOUT_MS = 30000;
+
+const NETWORK_ERROR_MESSAGE = 'Network problem. Please check your connection and try again.';
+
+// fetch with an AbortController timeout; maps aborts/connection failures
+// to a typed ApiError(status 0) so callers can show a friendly message.
+const fetchWithTimeout = async (url, options = {}) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    throw new ApiError(0, NETWORK_ERROR_MESSAGE, { cause: String(e?.message ?? e) });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 // --- Token storage ---
 
 export const saveTokens = async (accessToken, refreshToken) => {
@@ -37,7 +57,7 @@ const refreshAccessToken = async () => {
   _refreshing = (async () => {
     const token = await getRefreshToken();
     if (!token) throw new Error('no_refresh_token');
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    const res = await fetchWithTimeout(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: token }),
@@ -74,7 +94,7 @@ export const request = async (method, path, { body, auth = true, retry = true } 
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}${path}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,

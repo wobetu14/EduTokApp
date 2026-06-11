@@ -37,7 +37,8 @@ const CertificatePreview = ({ cert }) => {
   const catInfo = CATEGORIES.find((c) => c.id === cert.category);
   const date = new Date(cert.issuedAt);
   const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const certIdShort = cert.id.slice(-10).toUpperCase();
+  // Server-issued certs carry a verifiable EDUTOK-XXXXXXXXXX number
+  const certIdValue = cert.certificateNumber || `EDUTOK-${cert.id.slice(-10).toUpperCase()}`;
 
   return (
     <View style={[styles.certCard, { borderColor: GOLD + '55' }]}>
@@ -107,7 +108,7 @@ const CertificatePreview = ({ cert }) => {
       {/* Certificate ID strip */}
       <View style={[styles.certIdStrip, { backgroundColor: '#f8f5ee' }]}>
         <AppText style={styles.certIdLabel}>Certificate ID</AppText>
-        <AppText style={styles.certIdValue}>EDUTOK-{certIdShort}</AppText>
+        <AppText style={styles.certIdValue}>{certIdValue}</AppText>
         <AppText style={styles.certIdLabel}>edutok.app/verify</AppText>
       </View>
     </View>

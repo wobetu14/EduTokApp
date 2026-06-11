@@ -38,6 +38,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
     isLessonCompleted,
     getCourseProgress,
     getLessonsForCourse,
+    getCertificate,
     enroll,
   } = useCourses();
 
@@ -100,6 +101,14 @@ const CourseProfileScreen = ({ route, navigation }) => {
   }, [enrolled, courseId, navigation, handleEnroll]);
 
   const handleViewCertificate = () => {
+    // Prefer the server-issued certificate (verifiable EDUTOK-XXXXXXXXXX number);
+    // fall back to a client-derived one if the server hasn't issued it yet
+    const serverCert = getCertificate(courseId);
+    if (serverCert) {
+      navigation.navigate('Certificate', { certificate: serverCert });
+      return;
+    }
+
     const issuedAt = course.lessonIds
       .map((lid) => userProgress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)
       .filter(Boolean)

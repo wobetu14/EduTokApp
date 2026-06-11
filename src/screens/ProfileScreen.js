@@ -61,9 +61,17 @@ const ProfileScreen = ({ navigation }) => {
     badges,
     getCourseProgress,
     getLessonsForCourse,
+    getCertificate,
   } = useCourses();
 
   const handleViewCertificate = (course) => {
+    // Prefer the server-issued certificate (verifiable number); fall back to client-derived
+    const serverCert = getCertificate(course.id);
+    if (serverCert) {
+      navigation.navigate('Certificate', { certificate: serverCert });
+      return;
+    }
+
     const org = organizations.find((o) => o.id === course.organizationId);
     const issuedAt = course.lessonIds
       .map((lid) => progress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)

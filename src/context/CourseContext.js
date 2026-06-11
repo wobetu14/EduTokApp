@@ -4,7 +4,9 @@ import React, {
   useEffect,
   useReducer,
   useCallback,
+  useMemo,
   useRef,
+  useState,
 } from 'react';
 import * as api from '../services/apiService';
 import { useAuth } from './AuthContext';
@@ -28,9 +30,11 @@ const initialState = {
     totalSeconds: 0,
   },
   badges: [],
+  certificates: [],
   streakMilestone: null,
   newBadges: [],
   isLoading: true,
+  loadError: false,
 };
 
 const reducer = (state, action) => {
@@ -44,12 +48,52 @@ const reducer = (state, action) => {
         lessons: action.lessons,
         progress: action.progress,
         badges: action.badges || [],
+        certificates: action.certificates || [],
         isLoading: false,
+        loadError: false,
       };
+    case 'LOADING':
+      return { ...state, isLoading: true, loadError: false };
+    case 'LOAD_ERROR':
+      return { ...state, isLoading: false, loadError: true };
     case 'SET_PROGRESS':
       return { ...state, progress: action.progress };
+    case 'TOGGLE_LIKE_LOCAL': {
+      const liked = state.progress.likedLessons.includes(action.lessonId);
+      return {
+        ...state,
+        progress: {
+          ...state.progress,
+          likedLessons: liked
+            ? state.progress.likedLessons.filter((id) => id !== action.lessonId)
+            : [...state.progress.likedLessons, action.lessonId],
+        },
+      };
+    }
+    case 'TOGGLE_FAVORITE_LOCAL': {
+      const saved = state.progress.favoritedLessons.includes(action.lessonId);
+      return {
+        ...state,
+        progress: {
+          ...state.progress,
+          favoritedLessons: saved
+            ? state.progress.favoritedLessons.filter((id) => id !== action.lessonId)
+            : [...state.progress.favoritedLessons, action.lessonId],
+        },
+      };
+    }
+    case 'UNENROLL_LOCAL':
+      return {
+        ...state,
+        progress: {
+          ...state.progress,
+          enrolledCourses: state.progress.enrolledCourses.filter((id) => id !== action.courseId),
+        },
+      };
     case 'SET_BADGES':
       return { ...state, badges: action.badges };
+    case 'SET_CERTIFICATES':
+      return { ...state, certificates: action.certificates };
     case 'SET_STREAK_MILESTONE':
       return { ...state, streakMilestone: action.value };
     case 'SET_NEW_BADGES':
@@ -65,6 +109,7 @@ export const CourseProvider = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { isSignedIn } = useAuth();
   const coursesRef = useRef([]);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     coursesRef.current = state.courses;
@@ -77,13 +122,15 @@ export const CourseProvider = ({ children }) => {
     }
     const load = async () => {
       try {
+        dispatch({ type: 'LOADING' });
         // Phase 1: parallel fetch of list data
-        const [coursesRaw, organizations, instructors, progress, badges] = await Promise.all([
+        const [coursesRaw, organizations, instructors, progress, badges, certificates] = await Promise.all([
           api.fetchCourses(),
           api.fetchOrganizations(),
           api.fetchInstructors(),
           api.fetchProgress(),
           api.fetchBadges(),
+          api.fetchCertificates(),
         ]);
 
         // Phase 2: enrich each course with its full detail (includes nested lessons)
@@ -122,14 +169,19 @@ export const CourseProvider = ({ children }) => {
           lessons,
           progress: progressWithLikes,
           badges,
+          certificates,
         });
       } catch (e) {
         console.error('CourseContext load failed', e);
-        dispatch({ type: 'RESET' });
+        // Surface a retryable error state — RESET would leave isLoading: true
+        // and spin forever
+        dispatch({ type: 'LOAD_ERROR' });
       }
     };
     load();
-  }, [isSignedIn]);
+  }, [isSignedIn, loadAttempt]);
+
+  const reload = useCallback(() => setLoadAttempt((n) => n + 1), []);
 
   const checkAndAwardBadges = useCallback(async (progress) => {
     const courses = coursesRef.current;
@@ -170,23 +222,48 @@ export const CourseProvider = ({ children }) => {
       dispatch({ type: 'SET_STREAK_MILESTONE', value: newStreak });
     }
     checkAndAwardBadges(progress);
+    // Server issues a certificate when the last lesson of a course completes
+    api.fetchCertificates().then((certificates) =>
+      dispatch({ type: 'SET_CERTIFICATES', certificates })
+    );
   }, [state.progress.streak, checkAndAwardBadges]);
 
+  // Optimistic: flip local state instantly, revert by flipping back on failure
   const toggleLike = useCallback(async (lessonId) => {
-    const progress = await api.toggleLike(lessonId);
-    dispatch({ type: 'SET_PROGRESS', progress });
+    dispatch({ type: 'TOGGLE_LIKE_LOCAL', lessonId });
+    try {
+      await api.toggleLike(lessonId);
+    } catch (e) {
+      dispatch({ type: 'TOGGLE_LIKE_LOCAL', lessonId });
+      throw e;
+    }
   }, []);
 
   const toggleFavorite = useCallback(async (lessonId) => {
-    const progress = await api.toggleFavorite(lessonId);
-    dispatch({ type: 'SET_PROGRESS', progress });
+    const isCurrentlySaved = state.progress.favoritedLessons.includes(lessonId);
+    dispatch({ type: 'TOGGLE_FAVORITE_LOCAL', lessonId });
+    try {
+      await api.toggleFavorite(lessonId, isCurrentlySaved);
+    } catch (e) {
+      dispatch({ type: 'TOGGLE_FAVORITE_LOCAL', lessonId });
+      throw e;
+    }
+  }, [state.progress.favoritedLessons]);
+
+  const unenroll = useCallback(async (courseId) => {
+    await api.unenrollCourse(courseId);
+    dispatch({ type: 'UNENROLL_LOCAL', courseId });
   }, []);
 
-  const recordQuizPass = useCallback(async (quizId, lessonId, score) => {
-    const progress = await api.recordQuizPass(quizId, lessonId, score);
+  const recordQuizPass = useCallback(async (quizId, lessonId, score, answers = []) => {
+    const progress = await api.recordQuizPass(quizId, lessonId, score, answers);
     dispatch({ type: 'SET_PROGRESS', progress });
     checkAndAwardBadges(progress);
   }, [checkAndAwardBadges]);
+
+  const recordShare = useCallback((lessonId) => {
+    api.recordShare(lessonId);
+  }, []);
 
   const clearStreakMilestone = useCallback(() => {
     dispatch({ type: 'SET_STREAK_MILESTONE', value: null });
@@ -253,8 +330,20 @@ export const CourseProvider = ({ children }) => {
     [state.organizations]
   );
 
-  const visibleCourses = state.courses.filter(
-    (c) => (!c.status || c.status === 'approved') && (!c.visibility || c.visibility === 'public' || c.visibility === 'unlisted')
+  const getCertificate = useCallback(
+    (courseId) => state.certificates.find((c) => c.courseId === courseId),
+    [state.certificates]
+  );
+
+  // Memoized so its identity only changes when courses actually change.
+  // A fresh array on every provider render (e.g. after a like/save progress
+  // update) would invalidate ForYouScreen's feed useMemo and reshuffle the
+  // random feed mid-session — the current slide would jump to another course.
+  const visibleCourses = useMemo(
+    () => state.courses.filter(
+      (c) => (!c.status || c.status === 'approved') && (!c.visibility || c.visibility === 'public' || c.visibility === 'unlisted')
+    ),
+    [state.courses]
   );
 
   const getCoursesForOrg = useCallback(
@@ -280,11 +369,14 @@ export const CourseProvider = ({ children }) => {
         ...state,
         visibleCourses,
         authors: state.instructors,
+        reload,
         enroll,
+        unenroll,
         completeLesson,
         toggleLike,
         toggleFavorite,
         recordQuizPass,
+        recordShare,
         clearStreakMilestone,
         clearNewBadges,
         isEnrolled,
@@ -295,6 +387,7 @@ export const CourseProvider = ({ children }) => {
         getCourseProgress,
         getLessonsForCourse,
         getOrganization,
+        getCertificate,
         getCoursesForOrg,
         getPersonalizedCourses,
       }}

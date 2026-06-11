@@ -58,7 +58,8 @@ describe('fetchProgress', () => {
     expect(p.streak).toBe(5);
     expect(p.totalSeconds).toBe(3600);
     expect(p.lastActiveDate).toBe('2025-01-01');
-    expect(p.enrolledCourses).toEqual(['c1', 'c2']);
+    // enrolledCourses is built in CourseContext from is_enrolled course flags
+    expect(p.enrolledCourses).toEqual([]);
   });
 
   it('returns empty arrays and 0 defaults when endpoints return nothing', async () => {
@@ -90,23 +91,60 @@ describe('fetchProgress', () => {
 // --- toggleLike ---
 
 describe('toggleLike', () => {
-  beforeEach(() => mockProgressEndpoints());
-
-  it('POSTs like and adds lessonId to AsyncStorage cache when not liked', async () => {
+  it('POSTs like, adds lessonId to cache, returns { liked: true }', async () => {
     post.mockResolvedValue({});
-    await api.toggleLike('l1');
+    const result = await api.toggleLike('l1');
     expect(post).toHaveBeenCalledWith('/engagement/lessons/l1/like', {});
+    expect(get).not.toHaveBeenCalled(); // no fetchProgress round-trip
+    expect(result).toEqual({ liked: true });
     const cached = JSON.parse(await AsyncStorage.getItem('@edutok_liked_lessons'));
     expect(cached).toContain('l1');
   });
 
-  it('DELETEs like and removes lessonId from cache when already liked', async () => {
+  it('DELETEs like, removes lessonId from cache, returns { liked: false }', async () => {
     await AsyncStorage.setItem('@edutok_liked_lessons', JSON.stringify(['l1']));
     del.mockResolvedValue({});
-    await api.toggleLike('l1');
+    const result = await api.toggleLike('l1');
     expect(del).toHaveBeenCalledWith('/engagement/lessons/l1/like');
+    expect(result).toEqual({ liked: false });
     const cached = JSON.parse(await AsyncStorage.getItem('@edutok_liked_lessons'));
     expect(cached).not.toContain('l1');
+  });
+
+  it('treats 409 (already liked server-side) as success', async () => {
+    post.mockRejectedValue(Object.assign(new Error('Conflict'), { status: 409 }));
+    const result = await api.toggleLike('l1');
+    expect(result).toEqual({ liked: true });
+  });
+
+  it('rethrows network errors and leaves the cache untouched', async () => {
+    post.mockRejectedValue(Object.assign(new Error('network'), { status: 0 }));
+    await expect(api.toggleLike('l1')).rejects.toThrow('network');
+    expect(await AsyncStorage.getItem('@edutok_liked_lessons')).toBeNull();
+  });
+});
+
+// --- toggleFavorite ---
+
+describe('toggleFavorite', () => {
+  it('POSTs save and returns { saved: true } when not currently saved', async () => {
+    post.mockResolvedValue({});
+    const result = await api.toggleFavorite('l1', false);
+    expect(post).toHaveBeenCalledWith('/engagement/lessons/l1/save', {});
+    expect(result).toEqual({ saved: true });
+  });
+
+  it('DELETEs save and returns { saved: false } when currently saved', async () => {
+    del.mockResolvedValue({});
+    const result = await api.toggleFavorite('l1', true);
+    expect(del).toHaveBeenCalledWith('/engagement/lessons/l1/save');
+    expect(result).toEqual({ saved: false });
+  });
+
+  it('treats 404 (already removed server-side) as success', async () => {
+    del.mockRejectedValue(Object.assign(new Error('Not found'), { status: 404 }));
+    const result = await api.toggleFavorite('l1', true);
+    expect(result).toEqual({ saved: false });
   });
 });
 
@@ -179,15 +217,77 @@ describe('recordQuizPass', () => {
     mockProgressEndpoints();
   });
 
-  it('calls /quizzes/:id/submit', async () => {
-    await api.recordQuizPass('q1', 'l1', 90);
-    expect(post).toHaveBeenCalledWith('/quizzes/q1/submit', { lesson_id: 'l1', score: 90 });
+  it('submits the real answers array for server-side grading', async () => {
+    await api.recordQuizPass('q1', 'l1', 90, [true, 'Option B', { 'img.jpg': 'Label' }]);
+    expect(post).toHaveBeenCalledWith('/quizzes/q1/submit', {
+      answers: [true, 'Option B', { 'img.jpg': 'Label' }],
+    });
   });
 
-  it('ignores 409 Conflict (already passed)', async () => {
-    const err = Object.assign(new Error('Conflict'), { status: 409 });
-    post.mockRejectedValue(err);
+  it('defaults to empty answers when none provided', async () => {
+    await api.recordQuizPass('q1', 'l1', 90);
+    expect(post).toHaveBeenCalledWith('/quizzes/q1/submit', { answers: [] });
+  });
+
+  it('caches the pass locally even when the server rejects', async () => {
+    post.mockRejectedValue(new Error('bad payload'));
     await expect(api.recordQuizPass('q1', 'l1', 90)).resolves.not.toThrow();
+    const cached = JSON.parse(await AsyncStorage.getItem('@edutok_local_quiz_passes'));
+    expect(cached[0]).toMatchObject({ quizId: 'q1', lessonId: 'l1', score: 90 });
+  });
+});
+
+// --- recordShare ---
+
+describe('recordShare', () => {
+  it('POSTs a native share event', async () => {
+    post.mockResolvedValue({});
+    await api.recordShare('l1');
+    expect(post).toHaveBeenCalledWith('/engagement/lessons/l1/share', { platform: 'native' });
+  });
+
+  it('swallows server errors (fire-and-forget)', async () => {
+    post.mockRejectedValue(new Error('network error'));
+    await expect(api.recordShare('l1')).resolves.toBeUndefined();
+  });
+});
+
+// --- fetchCertificates ---
+
+describe('fetchCertificates', () => {
+  it('maps snake_case certificate fields', async () => {
+    get.mockResolvedValue({
+      data: [{
+        id: 'cert1',
+        course_id: 'c1',
+        certificate_number: 'EDUTOK-AB12CD34EF',
+        student_name: 'Alice',
+        course_name: 'Math 101',
+        organization_name: 'STEM Academy',
+        instructor_name: 'Prof. X',
+        category: 'math',
+        difficulty: 'Beginner',
+        issued_at: '2026-01-01',
+      }],
+    });
+    const certs = await api.fetchCertificates();
+    expect(certs[0]).toEqual({
+      id: 'cert1',
+      courseId: 'c1',
+      certificateNumber: 'EDUTOK-AB12CD34EF',
+      studentName: 'Alice',
+      courseName: 'Math 101',
+      organizationName: 'STEM Academy',
+      authorName: 'Prof. X',
+      category: 'math',
+      difficulty: 'Beginner',
+      issuedAt: '2026-01-01',
+    });
+  });
+
+  it('returns empty array on server error', async () => {
+    get.mockRejectedValue(new Error('network error'));
+    await expect(api.fetchCertificates()).resolves.toEqual([]);
   });
 });
 
@@ -199,6 +299,22 @@ describe('enrollCourse', () => {
     mockProgressEndpoints({ enrolled: [{ id: 'c1' }] });
     const p = await api.enrollCourse('c1');
     expect(post).toHaveBeenCalledWith('/courses/c1/enroll', {});
-    expect(p.enrolledCourses).toContain('c1');
+    // enrolledCourses is built in CourseContext, not fetchProgress
+    expect(p.enrolledCourses).toEqual([]);
+  });
+});
+
+// --- unenrollCourse ---
+
+describe('unenrollCourse', () => {
+  it('DELETEs the enrollment', async () => {
+    del.mockResolvedValue({});
+    await api.unenrollCourse('c1');
+    expect(del).toHaveBeenCalledWith('/courses/c1/enroll');
+  });
+
+  it('propagates server errors', async () => {
+    del.mockRejectedValue(Object.assign(new Error('Server error'), { status: 500 }));
+    await expect(api.unenrollCourse('c1')).rejects.toMatchObject({ status: 500 });
   });
 });

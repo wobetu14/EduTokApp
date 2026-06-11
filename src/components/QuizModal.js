@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -100,7 +100,7 @@ const SortZoneQuestion = ({ question, onComplete }) => {
   const handleSubmit = () => {
     if (!selected || submitted) return;
     setSubmitted(true);
-    onComplete(selected === question.correctZone);
+    onComplete(selected === question.correctZone, selected);
   };
 
   return (
@@ -198,7 +198,11 @@ const ImageMatchingQuestion = ({ question, answered, onComplete }) => {
   const handleCheck = () => {
     setChecked(true);
     const allCorrect = question.pairs.every((p) => selections[p.id] === p.label);
-    onComplete(allCorrect);
+    // Backend grading format: { [imageUrl]: label } — imageUri carries the
+    // original backend image URL (see mapLesson pair normalization)
+    const matches = {};
+    question.pairs.forEach((p) => { matches[p.imageUri] = selections[p.id]; });
+    onComplete(allCorrect, matches);
   };
 
   const usedLabels = new Set(Object.values(selections));
@@ -284,11 +288,14 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
   const [passed, setPassed] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [finalPct, setFinalPct] = useState(0);
+  // Raw per-question answers in the backend's grading format, indexed by question
+  const answersRef = useRef([]);
 
   const question = quiz?.questions?.[currentQ];
   const total = quiz?.questions?.length || 0;
 
   const reset = useCallback(() => {
+    answersRef.current = [];
     setCurrentQ(0);
     setSelected(null);
     setAnswered(false);
@@ -308,27 +315,34 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
     (val) => {
       setSelected(val);
       setAnswered(true);
+      // Backend grades multipleChoice against the option label, not the index
+      answersRef.current[currentQ] = question.type === 'multiplechoice'
+        ? question.options?.[val]
+        : val;
       if (val === question.correctAnswer) {
         setScore((s) => s + 1);
       }
     },
-    [question]
+    [question, currentQ]
   );
 
   const handleMatchComplete = useCallback(
-    (isAllCorrect) => {
+    (isAllCorrect, rawAnswer) => {
       setSelected(isAllCorrect);
       setAnswered(true);
+      answersRef.current[currentQ] = rawAnswer;
       if (isAllCorrect) setScore((s) => s + 1);
     },
-    []
+    [currentQ]
   );
 
   const handleNext = useCallback(() => {
     if (currentQ + 1 >= total) {
       // score state is already updated by handleAnswer before Next is pressed
       const pct = Math.round((score / total) * 100);
-      const didPass = pct >= 60;
+      // All questions must be answered correctly to pass (matches backend
+      // PASS_THRESHOLD = 1.0)
+      const didPass = score === total;
       setFinalScore(score);
       setFinalPct(pct);
       setFinished(true);
@@ -343,7 +357,7 @@ const QuizModal = ({ visible, quiz, onPass, onClose }) => {
 
   // Called by the "Continue" button on the pass results screen
   const handleContinue = useCallback(() => {
-    onPass?.(quiz.id, finalScore, finalPct);
+    onPass?.(quiz.id, finalScore, finalPct, answersRef.current);
   }, [quiz, finalScore, finalPct, onPass]);
 
   if (!quiz || !visible) return null;
