@@ -38,8 +38,6 @@ import { useTabBar } from '../context/TabBarContext';
 
 const SWIPE_THRESHOLD = 50;
 
-const EMPTY_PENDING = { enroll: false, like: false, save: false, share: false };
-
 // --- Content renderers ---
 
 const TextContent = ({ lesson }) => (
@@ -57,6 +55,14 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
   const [activeIdx, setActiveIdx] = useState(0);
   const raw = lesson.content?.images ?? (lesson.content?.imageUri ? [{ uri: lesson.content.imageUri, caption: lesson.content.caption }] : []);
   const images = raw.filter((img) => img?.uri);
+
+  // Track the visible page live while dragging — onMomentumScrollEnd alone
+  // updates late and never fires on web
+  const handleScroll = (e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+    if (idx !== activeIdx && idx >= 0 && idx < images.length) setActiveIdx(idx);
+  };
+
   return (
     <View style={StyleSheet.absoluteFill}>
       <ScrollView
@@ -64,13 +70,13 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
-        onMomentumScrollEnd={(e) => {
-          setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / slideWidth));
-        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {images.map((item, i) => (
-          <View key={i} style={{ width: slideWidth, height: slideHeight }}>
-            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <View key={i} style={{ width: slideWidth, height: slideHeight, backgroundColor: '#000' }}>
+            {/* contain = full image always visible (no horizontal cropping) */}
+            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
             {item.caption ? (
               <View style={styles.captionBox}>
                 <AppText style={styles.captionText}>{item.caption}</AppText>
@@ -104,7 +110,7 @@ const VideoPoster = ({ lesson, course }) => {
   const uri = lesson.thumbnail || course.thumbnail;
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]}>
-      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="contain" /> : null}
       <View style={styles.posterPlay} pointerEvents="none">
         <Ionicons name="play" size={42} color="rgba(255,255,255,0.85)" />
       </View>
@@ -114,7 +120,7 @@ const VideoPoster = ({ lesson, course }) => {
 
 // --- Engagement action button ---
 
-const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label, loading }) => {
+const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label }) => {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
@@ -126,18 +132,14 @@ const ActionBtn = ({ icon, activeIcon, isActive, count, color, onPress, label, l
   };
 
   return (
-    <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.8} disabled={loading}>
-      {loading ? (
-        <ActivityIndicator size="small" color="#fff" />
-      ) : (
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Ionicons
-            name={isActive ? activeIcon : icon}
-            size={30}
-            color={isActive ? color : '#fff'}
-          />
-        </Animated.View>
-      )}
+    <TouchableOpacity style={styles.actionBtn} onPress={handlePress} activeOpacity={0.8}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons
+          name={isActive ? activeIcon : icon}
+          size={30}
+          color={isActive ? color : '#fff'}
+        />
+      </Animated.View>
       {count != null && <AppText style={styles.actionCount}>{formatLargeNumber(count)}</AppText>}
       {label && <AppText style={styles.actionLabel}>{label}</AppText>}
     </TouchableOpacity>
@@ -150,9 +152,9 @@ const Slide = ({
   item, index, feedLength, isActive,
   slideWidth, slideBodyH, insetsTop, insetsBottom,
   navigation, t, showShare,
-  enrolled, liked, saved, pending,
+  enrolled, liked, saved,
   videoActive, videoProgress, onVideoProgress,
-  onEnrollToggle, onLike, onSave, onComment, onShare, onTapNext,
+  onEnroll, onLike, onSave, onComment, onShare, onTapNext,
 }) => {
   const { lesson, course } = item;
 
@@ -244,20 +246,17 @@ const Slide = ({
         )}
       </View>
 
-      {/* Right side: enroll/unenroll toggle + engagement buttons */}
+      {/* Right side: enrollment indicator + engagement buttons.
+          Enrolled → course thumbnail (tap opens the course details);
+          not enrolled → + (tap enrolls, optimistically). */}
       <View style={[styles.rightSide, { bottom: insetsBottom + 16 }]}>
         {enrolled ? (
           <TouchableOpacity
             style={styles.courseThumb}
-            onPress={onEnrollToggle}
+            onPress={() => navigation.navigate('CourseProfile', { courseId: course.id })}
             activeOpacity={0.85}
-            disabled={pending.enroll}
           >
-            {pending.enroll ? (
-              <View style={[styles.courseThumbImg, styles.courseThumbFallback]}>
-                <ActivityIndicator size="small" color="#fff" />
-              </View>
-            ) : course.thumbnail ? (
+            {course.thumbnail ? (
               <Image source={{ uri: course.thumbnail }} style={styles.courseThumbImg} resizeMode="cover" />
             ) : (
               <View style={[styles.courseThumbImg, styles.courseThumbFallback]}>
@@ -268,15 +267,10 @@ const Slide = ({
         ) : (
           <TouchableOpacity
             style={styles.enrollBtn}
-            onPress={onEnrollToggle}
+            onPress={onEnroll}
             activeOpacity={0.85}
-            disabled={pending.enroll}
           >
-            {pending.enroll ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="add" size={26} color="#fff" />
-            )}
+            <Ionicons name="add" size={26} color="#fff" />
           </TouchableOpacity>
         )}
 
@@ -285,14 +279,12 @@ const Slide = ({
           isActive={liked} color={COLORS.primary}
           count={lesson.likesCount + (liked ? 1 : 0)}
           onPress={onLike}
-          loading={pending.like}
         />
         <ActionBtn
           icon="bookmark-outline" activeIcon="bookmark"
           isActive={saved} color={COLORS.secondary}
           count={lesson.savesCount + (saved ? 1 : 0)}
           onPress={onSave}
-          loading={pending.save}
         />
         <ActionBtn
           icon="chatbubble-outline" activeIcon="chatbubble"
@@ -306,7 +298,6 @@ const Slide = ({
             isActive={false} color={COLORS.secondary}
             count={lesson.sharesCount}
             onPress={onShare}
-            loading={pending.share}
           />
         )}
       </View>
@@ -323,8 +314,8 @@ const ForYouScreen = ({ navigation }) => {
   const {
     visibleCourses: courses, lessons, organizations, isLoading, loadError, reload,
     isLiked, isFavorited, isEnrolled, isQuizPassed,
-    toggleLike, toggleFavorite, enroll, unenroll,
-    completeLesson, recordQuizPass, recordShare,
+    toggleLike, toggleFavorite, enroll,
+    completeLesson, recordQuizPass, recordShare, bumpCommentCount,
     streakMilestone, clearStreakMilestone,
   } = useCourses();
 
@@ -357,8 +348,6 @@ const ForYouScreen = ({ navigation }) => {
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
-  // Per-action in-flight indicators for the active slide's buttons
-  const [pending, setPending] = useState(EMPTY_PENDING);
 
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -392,7 +381,20 @@ const ForYouScreen = ({ navigation }) => {
       .filter(Boolean);
 
     return shuffle(items);
-  }, [lessons, courses, organizations]);
+    // `lessons` is intentionally NOT a dependency: its identity changes on
+    // count bumps (e.g. comment posted) and that must not reshuffle the feed.
+    // courses/lessons always update together in the single LOADED dispatch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, organizations]);
+
+  // Live lookup so slides show fresh counts (comments etc.) without the feed
+  // memo depending on the lessons array identity
+  const lessonsById = useMemo(() => {
+    const m = new Map();
+    lessons.forEach((l) => m.set(l.id, l));
+    return m;
+  }, [lessons]);
+  const liveLesson = useCallback((l) => lessonsById.get(l.id) ?? l, [lessonsById]);
 
   // PanResponder — created once; reads mutable refs during gestures
   const panResponder = useRef(
@@ -435,7 +437,7 @@ const ForYouScreen = ({ navigation }) => {
   ).current;
 
   const current = feed[currentIndex];
-  const lesson = current?.lesson;
+  const lesson = current ? liveLesson(current.lesson) : undefined;
   const course = current?.course;
 
   // Mark lesson complete and reset video progress when lesson changes.
@@ -534,66 +536,47 @@ const ForYouScreen = ({ navigation }) => {
   slideBodyHRef.current = slideBodyH;
   feedLengthRef.current = feed.length;
 
-  const setActionPending = useCallback((key, value) => {
-    setPending((p) => ({ ...p, [key]: value }));
-  }, []);
-
-  const handleEnrollToggle = useCallback(async (courseArg) => {
-    setActionPending('enroll', true);
+  // All engagement actions are optimistic: the UI flips instantly (state is
+  // updated locally in CourseContext before the request), and reverts with an
+  // error toast if the server rejects.
+  const handleEnroll = useCallback(async (courseArg) => {
+    showToast(t('enrolledToast'));
+    if (user?.notificationsEnabled !== false) {
+      scheduleEnrollmentNotification(courseArg.title);
+    }
     try {
-      if (isEnrolled(courseArg.id)) {
-        await unenroll(courseArg.id);
-        showToast(t('unenrolledToast'));
-      } else {
-        await enroll(courseArg.id);
-        showToast(t('enrolledToast'));
-        if (user?.notificationsEnabled !== false) {
-          scheduleEnrollmentNotification(courseArg.title);
-        }
-      }
+      await enroll(courseArg.id);
     } catch (e) {
       showToast(e?.message || t('networkError'));
-    } finally {
-      setActionPending('enroll', false);
     }
-  }, [isEnrolled, enroll, unenroll, showToast, t, user, setActionPending]);
+  }, [enroll, showToast, t, user]);
 
   const handleLike = useCallback(async (lessonArg) => {
-    setActionPending('like', true);
     try {
       await toggleLike(lessonArg.id);
     } catch (e) {
       showToast(e?.message || t('networkError'));
-    } finally {
-      setActionPending('like', false);
     }
-  }, [toggleLike, showToast, t, setActionPending]);
+  }, [toggleLike, showToast, t]);
 
   const handleSave = useCallback(async (lessonArg) => {
-    setActionPending('save', true);
     try {
       await toggleFavorite(lessonArg.id);
     } catch (e) {
       showToast(e?.message || t('networkError'));
-    } finally {
-      setActionPending('save', false);
     }
-  }, [toggleFavorite, showToast, t, setActionPending]);
+  }, [toggleFavorite, showToast, t]);
 
   const handleShare = useCallback(async (item) => {
     if (!item) return;
-    setActionPending('share', true);
     try {
       const result = await Share.share({
         message: `📚 Check out "${item.lesson.title}" from "${item.course.title}" on EduTok!`,
         title: item.lesson.title,
       });
       if (result.action === Share.sharedAction) recordShare(item.lesson.id);
-    } catch (_) {
-    } finally {
-      setActionPending('share', false);
-    }
-  }, [recordShare, setActionPending]);
+    } catch (_) {}
+  }, [recordShare]);
 
   const handleQuizPass = useCallback(
     async (quizId, score, _pct, answers) => {
@@ -658,7 +641,8 @@ const ForYouScreen = ({ navigation }) => {
 
   // Render one slide of the 3-slide stack (prev above, current, next below)
   const renderStackSlide = (index, position) => {
-    const item = feed[index];
+    // Resolve the live lesson object so counts stay fresh after engagement
+    const item = { ...feed[index], lesson: liveLesson(feed[index].lesson) };
     const isActive = position === 'current';
     const top = position === 'prev' ? -slideBodyH : position === 'next' ? slideBodyH : 0;
     return (
@@ -678,11 +662,10 @@ const ForYouScreen = ({ navigation }) => {
           enrolled={isEnrolled(item.course.id)}
           liked={isLiked(item.lesson.id)}
           saved={isFavorited(item.lesson.id)}
-          pending={isActive ? pending : EMPTY_PENDING}
           videoActive={isActive && videoActive}
           videoProgress={isActive ? videoProgress : 0}
           onVideoProgress={isActive ? setVideoProgress : undefined}
-          onEnrollToggle={() => handleEnrollToggle(item.course)}
+          onEnroll={() => handleEnroll(item.course)}
           onLike={() => handleLike(item.lesson)}
           onSave={() => handleSave(item.lesson)}
           onComment={() => setShowComments(true)}
@@ -741,6 +724,7 @@ const ForYouScreen = ({ navigation }) => {
             <CommentThread
               lessonId={lesson?.id}
               onClose={() => setShowComments(false)}
+              onPosted={() => bumpCommentCount(lesson?.id)}
             />
           </View>
         </View>
@@ -1017,24 +1001,25 @@ const styles = StyleSheet.create({
     fontSize: SIZES.sm,
     lineHeight: 18,
   },
+  // Bottom-center, above the course info block and below the caption box
   imgDots: {
     position: 'absolute',
-    top: 48,
+    bottom: 200,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   imgDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: 'rgba(255,255,255,0.45)',
   },
   imgDotActive: {
-    width: 16,
+    width: 20,
     backgroundColor: '#fff',
   },
   // Comments

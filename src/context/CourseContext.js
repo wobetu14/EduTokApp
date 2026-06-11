@@ -82,6 +82,25 @@ const reducer = (state, action) => {
         },
       };
     }
+    case 'BUMP_LESSON_COMMENTS':
+      return {
+        ...state,
+        lessons: state.lessons.map((l) =>
+          l.id === action.lessonId
+            ? { ...l, commentsCount: Math.max(0, (l.commentsCount ?? 0) + action.delta) }
+            : l
+        ),
+      };
+    case 'ENROLL_LOCAL':
+      return state.progress.enrolledCourses.includes(action.courseId)
+        ? state
+        : {
+            ...state,
+            progress: {
+              ...state.progress,
+              enrolledCourses: [...state.progress.enrolledCourses, action.courseId],
+            },
+          };
     case 'UNENROLL_LOCAL':
       return {
         ...state,
@@ -198,19 +217,15 @@ export const CourseProvider = ({ children }) => {
     }
   }, []);
 
+  // Optimistic: flip enrolled state instantly, revert on server failure
   const enroll = useCallback(async (courseId) => {
-    const progress = await api.enrollCourse(courseId);
-    // Guarantee the just-enrolled course is in enrolledCourses regardless of what
-    // fetchProgress returns (the backend enrolled-courses query may lag or fail)
-    dispatch({
-      type: 'SET_PROGRESS',
-      progress: {
-        ...progress,
-        enrolledCourses: progress.enrolledCourses.includes(courseId)
-          ? progress.enrolledCourses
-          : [...progress.enrolledCourses, courseId],
-      },
-    });
+    dispatch({ type: 'ENROLL_LOCAL', courseId });
+    try {
+      await api.enrollCourse(courseId);
+    } catch (e) {
+      dispatch({ type: 'UNENROLL_LOCAL', courseId });
+      throw e;
+    }
   }, []);
 
   const completeLesson = useCallback(async (lessonId, courseId, durationSeconds) => {
@@ -263,6 +278,12 @@ export const CourseProvider = ({ children }) => {
 
   const recordShare = useCallback((lessonId) => {
     api.recordShare(lessonId);
+  }, []);
+
+  // Mirrors the server, which increments comments_count for every posted
+  // comment including replies
+  const bumpCommentCount = useCallback((lessonId, delta = 1) => {
+    dispatch({ type: 'BUMP_LESSON_COMMENTS', lessonId, delta });
   }, []);
 
   const clearStreakMilestone = useCallback(() => {
@@ -377,6 +398,7 @@ export const CourseProvider = ({ children }) => {
         toggleFavorite,
         recordQuizPass,
         recordShare,
+        bumpCommentCount,
         clearStreakMilestone,
         clearNewBadges,
         isEnrolled,

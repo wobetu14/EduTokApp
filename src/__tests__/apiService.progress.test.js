@@ -28,14 +28,14 @@ const mockProgressEndpoints = ({
   saves = [],
   quizHistory = [],
   streak = {},
-  enrolled = [],
+  courseBreakdown = [],
 } = {}) => {
   get.mockImplementation((path) => {
     if (path.includes('/completions'))  return Promise.resolve({ data: completions });
     if (path.includes('/saves'))        return Promise.resolve({ data: saves });
     if (path.includes('/quiz-history')) return Promise.resolve({ data: quizHistory });
     if (path.includes('/streak'))       return Promise.resolve({ data: streak });
-    if (path.includes('enrolled=true')) return Promise.resolve({ data: enrolled });
+    if (path.includes('/analytics'))    return Promise.resolve({ data: { course_breakdown: courseBreakdown } });
     return Promise.resolve({});
   });
 };
@@ -47,7 +47,7 @@ describe('fetchProgress', () => {
       saves:       [{ lesson_id: 'l2' }],
       quizHistory: [{ quiz_id: 'q1', lesson_id: 'l1', score: 80, passed_at: '2025-01-01' }],
       streak:      { current_streak: 5, total_seconds_learned: 3600, last_active_date: '2025-01-01' },
-      enrolled:    [{ id: 'c1' }, { id: 'c2' }],
+      courseBreakdown: [{ course_id: 'c1' }, { course_id: 'c2' }],
     });
 
     const p = await api.fetchProgress();
@@ -58,8 +58,8 @@ describe('fetchProgress', () => {
     expect(p.streak).toBe(5);
     expect(p.totalSeconds).toBe(3600);
     expect(p.lastActiveDate).toBe('2025-01-01');
-    // enrolledCourses is built in CourseContext from is_enrolled course flags
-    expect(p.enrolledCourses).toEqual([]);
+    // enrolledCourses comes from the analytics course_breakdown (server truth)
+    expect(p.enrolledCourses).toEqual(['c1', 'c2']);
   });
 
   it('returns empty arrays and 0 defaults when endpoints return nothing', async () => {
@@ -80,7 +80,7 @@ describe('fetchProgress', () => {
       if (path.includes('/saves'))       return Promise.resolve({ data: [] });
       if (path.includes('/quiz-history'))return Promise.resolve({ data: [] });
       if (path.includes('/streak'))      return Promise.resolve({ data: {} });
-      if (path.includes('enrolled=true'))return Promise.resolve({ data: [] });
+      if (path.includes('/analytics'))   return Promise.resolve({ data: { course_breakdown: [] } });
       return Promise.resolve({});
     });
     const p = await api.fetchProgress();
@@ -294,13 +294,21 @@ describe('fetchCertificates', () => {
 // --- enrollCourse ---
 
 describe('enrollCourse', () => {
-  it('POSTs to enroll endpoint then returns progress', async () => {
+  it('POSTs to enroll endpoint without refetching progress', async () => {
     post.mockResolvedValue({});
-    mockProgressEndpoints({ enrolled: [{ id: 'c1' }] });
-    const p = await api.enrollCourse('c1');
+    await api.enrollCourse('c1');
     expect(post).toHaveBeenCalledWith('/courses/c1/enroll', {});
-    // enrolledCourses is built in CourseContext, not fetchProgress
-    expect(p.enrolledCourses).toEqual([]);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('treats 409 (already enrolled) as success', async () => {
+    post.mockRejectedValue(Object.assign(new Error('Conflict'), { status: 409 }));
+    await expect(api.enrollCourse('c1')).resolves.toBeUndefined();
+  });
+
+  it('rethrows other errors', async () => {
+    post.mockRejectedValue(Object.assign(new Error('network'), { status: 0 }));
+    await expect(api.enrollCourse('c1')).rejects.toThrow('network');
   });
 });
 

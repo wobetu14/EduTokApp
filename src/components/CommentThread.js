@@ -76,7 +76,7 @@ const CommentItem = ({ item, replies, onReply }) => {
   );
 };
 
-const CommentThread = ({ lessonId, onClose }) => {
+const CommentThread = ({ lessonId, onClose, onPosted }) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [comments, setComments] = useState([]);
@@ -113,17 +113,23 @@ const CommentThread = ({ lessonId, onClose }) => {
   const handlePost = useCallback(async () => {
     if (!text.trim() || posting) return;
     setPosting(true);
-    let updated;
-    if (replyingTo) {
-      updated = await api.postReply(lessonId, replyingTo.commentId, user.id, user.username, user.avatar, text.trim());
-    } else {
-      updated = await api.postComment(lessonId, user.id, user.username, user.avatar, text.trim());
+    try {
+      let updated;
+      if (replyingTo) {
+        updated = await api.postReply(lessonId, replyingTo.commentId, user.id, user.username, user.avatar, text.trim());
+      } else {
+        updated = await api.postComment(lessonId, user.id, user.username, user.avatar, text.trim());
+      }
+      setComments(updated);
+      setText('');
+      setReplyingTo(null);
+      onPosted?.();
+    } catch (_) {
+      // Post failed (e.g. network) — keep the typed text so the user can retry
+    } finally {
+      setPosting(false);
     }
-    setComments(updated);
-    setText('');
-    setReplyingTo(null);
-    setPosting(false);
-  }, [text, posting, lessonId, user, replyingTo]);
+  }, [text, posting, lessonId, user, replyingTo, onPosted]);
 
   const topCount = commentTree.length;
 

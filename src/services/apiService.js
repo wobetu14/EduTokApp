@@ -292,11 +292,12 @@ export const fetchLessons = async () => _cachedLessons;
 // --- Progress ---
 
 export const fetchProgress = async () => {
-  const [completions, saves, quizHistory, streakData] = await Promise.all([
+  const [completions, saves, quizHistory, streakData, analytics] = await Promise.all([
     get('/progress/me/completions').catch(() => ({})),
     get('/progress/me/saves').catch(() => ({})),
     get('/progress/me/quiz-history').catch(() => ({})),
     get('/progress/me/streak').catch(() => ({})),
+    get('/progress/me/analytics').catch(() => ({})),
   ]);
 
   const completedLessons = ((completions.data ?? completions.completions ?? []) || []).map((c) => ({
@@ -321,8 +322,13 @@ export const fetchProgress = async () => {
   const totalSeconds   = sd.total_seconds_learned ?? sd.totalSeconds  ?? 0;
   const lastActiveDate = sd.last_active_date   ?? sd.lastActiveDate ?? null;
 
-  // enrolledCourses is built in CourseContext from is_enrolled on each course detail response
-  const enrolledCourses = [];
+  // There is no list-my-enrollments endpoint; the analytics course_breakdown
+  // contains exactly the caller's enrolled courses. This must come from the
+  // server on EVERY fetch — returning [] here wiped enrollment state each time
+  // completeLesson/recordQuizPass refreshed progress (the "+ always shows" bug).
+  const enrolledCourses = ((analytics.data ?? analytics)?.course_breakdown ?? []).map(
+    (c) => c.course_id ?? c.courseId,
+  );
 
   const likedLessons = await _getLikedLessonsCache();
 
@@ -351,8 +357,12 @@ export const fetchProgress = async () => {
 };
 
 export const enrollCourse = async (courseId) => {
-  await post(`/courses/${courseId}/enroll`, {});
-  return fetchProgress();
+  try {
+    await post(`/courses/${courseId}/enroll`, {});
+  } catch (e) {
+    // 409 = already enrolled server-side — the desired state, not a failure
+    if (e?.status !== 409) throw e;
+  }
 };
 
 export const unenrollCourse = async (courseId) => {

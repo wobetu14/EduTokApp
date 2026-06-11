@@ -45,6 +45,7 @@ const EngagementButtons = ({
   onComment,
   onShare,
   onEnroll,
+  onOpenCourse,
   isEnrolled,
   courseThumbnail,
   showEnroll = false,
@@ -55,9 +56,20 @@ const EngagementButtons = ({
     <View style={[styles.container, style]}>
       {showEnroll && (
         isEnrolled ? (
-          <View style={styles.enrolledThumb}>
-            <Image source={{ uri: courseThumbnail }} style={styles.enrolledThumbImg} resizeMode="cover" />
-          </View>
+          <TouchableOpacity
+            style={styles.enrolledThumb}
+            onPress={onOpenCourse}
+            activeOpacity={0.85}
+            disabled={!onOpenCourse}
+          >
+            {courseThumbnail ? (
+              <Image source={{ uri: courseThumbnail }} style={styles.enrolledThumbImg} resizeMode="cover" />
+            ) : (
+              <View style={[styles.enrolledThumbImg, styles.enrolledThumbFallback]}>
+                <Ionicons name="checkmark" size={22} color={COLORS.success} />
+              </View>
+            )}
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.enrollBtn} onPress={onEnroll} activeOpacity={0.85}>
             <Ionicons name="add" size={28} color="#fff" />
@@ -154,6 +166,11 @@ const styles = StyleSheet.create({
   enrolledThumbImg: {
     width: '100%',
     height: '100%',
+  },
+  enrolledThumbFallback: {
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

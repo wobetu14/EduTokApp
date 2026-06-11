@@ -63,10 +63,12 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
       <View style={styles.container}>
+        {/* contain = full frame always visible (no horizontal cropping),
+            matching the object-fit behavior of image lessons */}
         <VideoView
           player={player}
           style={styles.fill}
-          contentFit="cover"
+          contentFit="contain"
           nativeControls={false}
           fullscreenOptions={{ isFullscreenButtonHidden: true }}
         />

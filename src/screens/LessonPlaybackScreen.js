@@ -55,6 +55,14 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
   const [activeIdx, setActiveIdx] = useState(0);
   const raw = lesson.content?.images ?? (lesson.content?.imageUri ? [{ uri: lesson.content.imageUri, caption: lesson.content.caption }] : []);
   const images = raw.filter((img) => img?.uri);
+
+  // Track the visible page live while dragging — onMomentumScrollEnd alone
+  // updates late and never fires on web
+  const handleScroll = (e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+    if (idx !== activeIdx && idx >= 0 && idx < images.length) setActiveIdx(idx);
+  };
+
   return (
     <View style={styles.imageContainer}>
       <ScrollView
@@ -62,13 +70,13 @@ const ImageContent = ({ lesson, slideWidth, slideHeight }) => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         style={{ flex: 1 }}
-        onMomentumScrollEnd={(e) => {
-          setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / slideWidth));
-        }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {images.map((item, i) => (
-          <View key={i} style={{ width: slideWidth, height: slideHeight }}>
-            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <View key={i} style={{ width: slideWidth, height: slideHeight, backgroundColor: '#000' }}>
+            {/* contain = full image always visible (no horizontal cropping) */}
+            <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
             {item.caption ? (
               <View style={styles.captionRow}>
                 <AppText style={styles.captionText}>{item.caption}</AppText>
@@ -101,7 +109,7 @@ const VideoContent = ({ lesson, active, onProgress }) => (
 // --- Lesson slide ---
 const LessonSlide = ({
   lesson, active, isLiked, isFavorited, isEnrolled,
-  onLike, onFavorite, onComment, onShare, onEnroll,
+  onLike, onFavorite, onComment, onShare, onEnroll, onOpenCourse,
   commentCount, courseTitle, lessonIndex, totalLessons,
   videoProgress, onVideoProgress,
   showShare, insetBottom, slideWidth, slideHeight, courseThumbnail,
@@ -177,6 +185,7 @@ const LessonSlide = ({
           onComment={onComment}
           onShare={onShare}
           onEnroll={onEnroll}
+          onOpenCourse={onOpenCourse}
           isEnrolled={isEnrolled}
           courseThumbnail={courseThumbnail}
           showEnroll={true}
@@ -198,7 +207,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
     getLessonsForCourse, toggleLike, toggleFavorite,
-    enroll, completeLesson, recordQuizPass, recordShare,
+    enroll, completeLesson, recordQuizPass, recordShare, bumpCommentCount,
   } = useCourses();
 
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
@@ -236,6 +245,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const tryGoNextRef = useRef(null);
   const goToPrevRef = useRef(null);
   const currentLessonTypeRef = useRef(null);
+  const slideWidthRef = useRef(slideWidth);
   const isAnimatingRef = useRef(false);
 
   const enrolled = isEnrolled(courseId);
@@ -254,6 +264,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const animateToNext = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
+    setVideoActive(false); // pause video during the transition (same as ForYou)
     Animated.timing(translateY, {
       toValue: -slideH,
       duration: 250,
@@ -264,10 +275,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         requestAnimationFrame(() => {
           translateY.setValue(0);
           isAnimatingRef.current = false;
+          setVideoActive(true);
         });
       } else {
         translateY.setValue(0);
         isAnimatingRef.current = false;
+        setVideoActive(true);
       }
     });
   }, [translateY, slideH]);
@@ -275,6 +288,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const animateToPrev = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
+    setVideoActive(false);
     Animated.timing(translateY, {
       toValue: slideH,
       duration: 250,
@@ -285,10 +299,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         requestAnimationFrame(() => {
           translateY.setValue(0);
           isAnimatingRef.current = false;
+          setVideoActive(true);
         });
       } else {
         translateY.setValue(0);
         isAnimatingRef.current = false;
+        setVideoActive(true);
       }
     });
   }, [translateY, slideH]);
@@ -318,11 +334,15 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   tryGoNextRef.current = tryGoNext;
   goToPrevRef.current = goToPrev;
   currentLessonTypeRef.current = lesson?.type ?? null;
+  slideWidthRef.current = slideWidth;
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false, // let taps reach video/buttons
       onMoveShouldSetPanResponder: (_, g) => {
         if (isAnimatingRef.current) return false;
+        // Never steal gestures that start in the right-side button column
+        if (g.x0 > slideWidthRef.current - 90) return false;
         const type = currentLessonTypeRef.current;
         if (type === 'text') return false;
         if (type === 'image') {
@@ -374,6 +394,36 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     } catch (_) {}
   }, [lesson, course, recordShare]);
 
+  // Optimistic engagement handlers (same pattern as ForYouScreen): the context
+  // flips state instantly and reverts on server failure — we only surface errors
+  const handleEnroll = useCallback(async () => {
+    showToast(t('enrolledToast'));
+    if (user?.notificationsEnabled !== false) {
+      scheduleEnrollmentNotification(course?.title || '');
+    }
+    try {
+      await enroll(courseId);
+    } catch (e) {
+      showToast(e?.message || t('networkError'));
+    }
+  }, [enroll, courseId, course, showToast, t, user]);
+
+  const handleLike = useCallback(async () => {
+    try {
+      await toggleLike(lesson.id);
+    } catch (e) {
+      showToast(e?.message || t('networkError'));
+    }
+  }, [toggleLike, lesson, showToast, t]);
+
+  const handleFavorite = useCallback(async () => {
+    try {
+      await toggleFavorite(lesson.id);
+    } catch (e) {
+      showToast(e?.message || t('networkError'));
+    }
+  }, [toggleFavorite, lesson, showToast, t]);
+
   if (!lesson) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
@@ -407,17 +457,12 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             isLiked={isLiked(lesson.id)}
             isFavorited={isFavorited(lesson.id)}
             isEnrolled={isEnrolled(courseId)}
-            onLike={() => toggleLike(lesson.id)}
-            onFavorite={() => toggleFavorite(lesson.id)}
+            onLike={handleLike}
+            onFavorite={handleFavorite}
             onComment={() => setShowComments(true)}
             onShare={handleShare}
-            onEnroll={async () => {
-              await enroll(courseId);
-              showToast(t('enrolledToast'));
-              if (user?.notificationsEnabled !== false) {
-                scheduleEnrollmentNotification(course?.title || '');
-              }
-            }}
+            onEnroll={handleEnroll}
+            onOpenCourse={() => navigation.navigate('CourseProfile', { courseId })}
             commentCount={0}
             courseTitle={course?.title || ''}
             lessonIndex={currentIndex}
@@ -474,6 +519,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             <CommentThread
               lessonId={lesson.id}
               onClose={() => setShowComments(false)}
+              onPosted={() => bumpCommentCount(lesson.id)}
             />
           </View>
         </View>
@@ -548,24 +594,25 @@ const styles = StyleSheet.create({
     fontSize: SIZES.sm,
     lineHeight: 18,
   },
+  // Bottom-center, below the caption box (bottom: 180) and above the info block
   imgDots: {
     position: 'absolute',
-    top: 52,
+    bottom: 160,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   imgDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: 'rgba(255,255,255,0.45)',
   },
   imgDotActive: {
-    width: 16,
+    width: 20,
     backgroundColor: '#fff',
   },
   // Video lesson
