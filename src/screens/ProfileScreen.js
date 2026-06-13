@@ -1156,7 +1156,7 @@ const styles = StyleSheet.create({
   fontBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   fontBtnText: { color: COLORS.textSecondary, fontWeight: '700' },
   fontBtnTextActive: { color: '#fff' },
-  tabScrollRow: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  tabScrollRow: { marginTop: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   tabRow: { flexDirection: 'row', paddingTop: 12, gap: 4 },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: SIZES.base },
 });
