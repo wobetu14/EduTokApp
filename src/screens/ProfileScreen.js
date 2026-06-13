@@ -311,23 +311,39 @@ const ProfileScreen = ({ navigation }) => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabScrollRow, { paddingHorizontal: hPad }]}>
         <View style={styles.tabRow}>
           {[
-            { key: 'progress', label: t('progressTab') },
-            { key: 'certs',    label: `${t('certsTab')}${completedCourses.length > 0 ? ` (${completedCourses.length})` : ''}` },
-            { key: 'saved',    label: t('favoriteLessons') },
-            { key: 'history',  label: t('history') },
-            { key: 'badges',   label: t('badgesTab') },
-            { key: 'analytics', label: t('analyticsTab') },
-          ].map(({ key, label }) => (
-            <TouchableOpacity
-              key={key}
-              style={[styles.tab, activeTab === key && styles.tabActive]}
-              onPress={() => setActiveTab(key)}
-            >
-              <AppText style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</AppText>
-            </TouchableOpacity>
-          ))}
+            { key: 'progress',  icon: 'book-outline',        label: t('progressTab') },
+            { key: 'certs',     icon: 'ribbon-outline',      label: t('certsTab'), badge: completedCourses.length },
+            { key: 'saved',     icon: 'bookmark-outline',    label: t('favoriteLessons') },
+            { key: 'history',   icon: 'time-outline',        label: t('history') },
+            { key: 'badges',    icon: 'medal-outline',       label: t('badgesTab') },
+            { key: 'analytics', icon: 'stats-chart-outline', label: t('analyticsTab') },
+          ].map(({ key, icon, label, badge }) => {
+            const active = activeTab === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.tab, active && styles.tabActive]}
+                onPress={() => setActiveTab(key)}
+                accessibilityRole="tab"
+                accessibilityLabel={label}
+                accessibilityState={{ selected: active }}
+              >
+                <View>
+                  <Ionicons name={icon} size={22} color={active ? COLORS.primary : COLORS.textMuted} />
+                  {badge > 0 && (
+                    <View style={styles.tabBadge}>
+                      <AppText style={styles.tabBadgeText}>{badge > 99 ? '99+' : badge}</AppText>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
+
+      {/* Active-tab description */}
+      <AppText style={[styles.tabDesc, { paddingHorizontal: hPad }]}>{t(`${activeTab}TabDesc`)}</AppText>
 
       {/* Tab content */}
       {activeTab === 'progress' && (
@@ -919,15 +935,28 @@ const styles = StyleSheet.create({
   },
   verifyText: { flex: 1, color: COLORS.warning, fontSize: SIZES.sm, fontWeight: '600' },
   tab: {
-    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 2,
     paddingBottom: 12,
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
   tabActive: { borderBottomColor: COLORS.primary },
-  tabText: { color: COLORS.textSecondary, fontSize: SIZES.sm, fontWeight: '600' },
-  tabTextActive: { color: COLORS.text, fontWeight: '700' },
+  tabBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -12,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  tabDesc: { color: COLORS.textMuted, fontSize: SIZES.xs, fontWeight: '500', paddingTop: 12, paddingBottom: 2 },
   section: { padding: 16, gap: 12 },
   emptyText: { color: COLORS.textMuted, fontSize: SIZES.sm, textAlign: 'center', paddingTop: 24 },
   courseRow: {
