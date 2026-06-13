@@ -11,6 +11,7 @@ import { ToastProvider } from './src/context/ToastContext';
 import { AccessibilityProvider } from './src/context/AccessibilityContext';
 import { TabBarProvider } from './src/context/TabBarContext';
 import TabNavigator from './src/navigation/TabNavigator';
+import linking from './src/navigation/linking';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { COLORS } from './src/utils/constants';
@@ -44,7 +45,7 @@ const AppInner = () => {
   return (
     <CourseProvider>
       <TabBarProvider>
-        <NavigationContainer theme={darkTheme}>
+        <NavigationContainer theme={darkTheme} linking={linking}>
           <ToastProvider>
             <TabNavigator />
           </ToastProvider>

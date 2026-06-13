@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
-  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +23,8 @@ import { useToast } from '../context/ToastContext';
 import { useTabBar } from '../context/TabBarContext';
 import { scheduleEnrollmentNotification } from '../services/notificationService';
 import AppText from '../components/AppText';
+import ShareSheet from '../components/ShareSheet';
+import { courseLink } from '../utils/shareLinks';
 import { useFocusEffect } from '@react-navigation/native';
 
 const CourseProfileScreen = ({ route, navigation }) => {
@@ -46,6 +47,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
 
   const { t } = useTranslation();
   const { hideTabBar, showTabBar } = useTabBar();
+  const [shareVisible, setShareVisible] = useState(false);
 
   // Hide the bottom tab bar while scrolling down, reveal on scroll up —
   // same behaviour as the Explore/Search/Profile tabs.
@@ -86,12 +88,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
     );
   }
 
-  const handleShare = () => {
-    Share.share({
-      message: `Check out "${course.title}" by ${org?.name || 'EduTok'} on EduTok!\n${lessons.length} lessons · ${formatMinutes(course.totalDuration)}`,
-      title: course.title,
-    });
-  };
+  const handleShare = () => setShareVisible(true);
 
   const handleEnroll = async () => {
     await enroll(courseId);
@@ -153,6 +150,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
   };
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
@@ -282,6 +280,14 @@ const CourseProfileScreen = ({ route, navigation }) => {
 
       <View style={{ height: 80 }} />
     </ScrollView>
+    <ShareSheet
+      visible={shareVisible}
+      onClose={() => setShareVisible(false)}
+      title={course.title}
+      message={`📚 Check out "${course.title}" by ${org?.name || 'EduTok'} on EduTok — ${lessons.length} lessons · ${formatMinutes(course.totalDuration)}`}
+      url={courseLink(course.id)}
+    />
+    </>
   );
 };
 

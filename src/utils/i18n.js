@@ -154,6 +154,11 @@ const translations = {
     tryDifferentKeywords: 'Try different keywords or filters',
     searchForCoursesTitle: 'Search for courses',
     findLessonsOnAnyTopic: 'Find lessons on any topic',
+    // Share
+    shareTitle: 'Share',
+    copyLink: 'Copy link',
+    shareVia: 'Share via...',
+    linkCopied: 'Link copied to clipboard',
     // Comments
     noCommentsFirst: 'No comments yet. Be the first!',
     comment: 'Comment',
@@ -381,6 +386,11 @@ const translations = {
     tryDifferentKeywords: 'የተለያዩ ቁልፍ ቃላት ወይም ማጣሪያዎች ሞክር',
     searchForCoursesTitle: 'ኮርሶች ፈልግ',
     findLessonsOnAnyTopic: 'ስለ ማናቸውም ርዕስ ትምህርቶችን ፈልግ',
+    // Share
+    shareTitle: 'አጋራ',
+    copyLink: 'ሊንክ ቅዳ',
+    shareVia: 'በዚህ አጋራ...',
+    linkCopied: 'ሊንክ ተቀድቷል',
     // Comments
     noCommentsFirst: 'ምንም አስተያየቶች የሉም። የመጀመሪያ ሁን!',
     comment: 'አስተያየት',

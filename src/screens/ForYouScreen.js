@@ -14,7 +14,6 @@ import {
   PanResponder,
   StatusBar,
   ActivityIndicator,
-  Share,
   Image,
   ScrollView,
 } from 'react-native';
@@ -34,6 +33,8 @@ import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, sched
 import { useToast } from '../context/ToastContext';
 import StreakCelebration from '../components/StreakCelebration';
 import AppText from '../components/AppText';
+import ShareSheet from '../components/ShareSheet';
+import { lessonLink } from '../utils/shareLinks';
 import { useTabBar } from '../context/TabBarContext';
 
 const SWIPE_THRESHOLD = 50;
@@ -348,6 +349,7 @@ const ForYouScreen = ({ navigation }) => {
   const [showComments, setShowComments] = useState(false);
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [shareTarget, setShareTarget] = useState(null);
 
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -567,16 +569,10 @@ const ForYouScreen = ({ navigation }) => {
     }
   }, [toggleFavorite, showToast, t]);
 
-  const handleShare = useCallback(async (item) => {
+  const handleShare = useCallback((item) => {
     if (!item) return;
-    try {
-      const result = await Share.share({
-        message: `📚 Check out "${item.lesson.title}" from "${item.course.title}" on EduTok!`,
-        title: item.lesson.title,
-      });
-      if (result.action === Share.sharedAction) recordShare(item.lesson.id);
-    } catch (_) {}
-  }, [recordShare]);
+    setShareTarget(item);
+  }, []);
 
   const handleQuizPass = useCallback(
     async (quizId, score, _pct, answers) => {
@@ -734,6 +730,15 @@ const ForYouScreen = ({ navigation }) => {
         visible={!!streakMilestone}
         streak={streakMilestone}
         onFinish={clearStreakMilestone}
+      />
+
+      <ShareSheet
+        visible={!!shareTarget}
+        onClose={() => setShareTarget(null)}
+        title={shareTarget?.lesson.title}
+        message={shareTarget ? `📚 Check out "${shareTarget.lesson.title}" from "${shareTarget.course.title}" on EduTok!` : ''}
+        url={shareTarget ? lessonLink(shareTarget.lesson.id, shareTarget.course.id) : ''}
+        onShared={() => shareTarget && recordShare(shareTarget.lesson.id)}
       />
     </View>
   );

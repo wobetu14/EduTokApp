@@ -16,7 +16,6 @@ import {
   PanResponder,
   Animated,
   StatusBar,
-  Share,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +34,9 @@ import { useTranslation } from '../utils/useTranslation';
 import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
 import AppText from '../components/AppText';
+import ShareSheet from '../components/ShareSheet';
+import { lessonLink } from '../utils/shareLinks';
+import { useTabBar } from '../context/TabBarContext';
 
 const SWIPE_THRESHOLD = 60;
 
@@ -234,6 +236,19 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
   const [slideH, setSlideH] = useState(H);
+  const [shareVisible, setShareVisible] = useState(false);
+
+  // Keep the bottom tab bar visible on this screen (it overlays the content);
+  // the slide is shortened by its height so nothing renders underneath it
+  const { showTabBar } = useTabBar();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', showTabBar);
+    return unsubscribe;
+  }, [navigation, showTabBar]);
+
+  // tab bar: paddingTop(10) + pill(40) + paddingBottom(6) = 56 base + device inset
+  const tabBarH = 56 + insets.bottom;
+  const slideBodyH = slideH - tabBarH;
 
   // Hide Share when screen is too short to fit it comfortably
   const showShare = slideH >= 700;
@@ -253,6 +268,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   // Mark lesson complete and reset video progress when lesson changes
   useEffect(() => {
     setVideoProgress(0);
+    setVideoActive(true); // recover from any stuck-paused transition state
     if (lesson && user && enrolled) {
       completeLesson(lesson.id, courseId, lesson.duration);
       if (user?.notificationsEnabled !== false) {
@@ -266,7 +282,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     isAnimatingRef.current = true;
     setVideoActive(false); // pause video during the transition (same as ForYou)
     Animated.timing(translateY, {
-      toValue: -slideH,
+      toValue: -slideBodyH,
       duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -283,14 +299,14 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         setVideoActive(true);
       }
     });
-  }, [translateY, slideH]);
+  }, [translateY, slideBodyH]);
 
   const animateToPrev = useCallback(() => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
     setVideoActive(false);
     Animated.timing(translateY, {
-      toValue: slideH,
+      toValue: slideBodyH,
       duration: 250,
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -307,7 +323,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         setVideoActive(true);
       }
     });
-  }, [translateY, slideH]);
+  }, [translateY, slideBodyH]);
 
   const tryGoNext = useCallback(() => {
     if (lesson?.hasQuiz && lesson?.quiz && enrolled && !isQuizPassed(lesson.quiz?.id)) {
@@ -383,16 +399,10 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     }
   }, [recordQuizPass, lesson, pendingNext, animateToNext, user]);
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(() => {
     if (!lesson || !course) return;
-    try {
-      const result = await Share.share({
-        message: `📚 Check out "${lesson.title}" from "${course.title}" on EduTok!`,
-        title: lesson.title,
-      });
-      if (result.action === Share.sharedAction) recordShare(lesson.id);
-    } catch (_) {}
-  }, [lesson, course, recordShare]);
+    setShareVisible(true);
+  }, [lesson, course]);
 
   // Optimistic engagement handlers (same pattern as ForYouScreen): the context
   // flips state instantly and reverts on server failure — we only surface errors
@@ -448,7 +458,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         </TouchableOpacity>
 
         <Animated.View
-          style={[styles.slideWrap, { width: slideWidth, height: slideH, transform: [{ translateY }] }]}
+          style={[styles.slideWrap, { width: slideWidth, height: slideBodyH, transform: [{ translateY }] }]}
           {...panResponder.panHandlers}
         >
           <LessonSlide
@@ -472,7 +482,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             showShare={showShare}
             insetBottom={insets.bottom}
             slideWidth={slideWidth}
-            slideHeight={slideH}
+            slideHeight={slideBodyH}
             courseThumbnail={course?.thumbnail}
           />
         </Animated.View>
@@ -481,7 +491,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         {currentIndex < lessons.length - 1 && (
           lesson.type === 'text' ? (
             <TouchableOpacity
-              style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}
+              style={[styles.swipeHint, { bottom: tabBarH + 12 }]}
               onPress={tryGoNext}
               activeOpacity={0.7}
             >
@@ -489,7 +499,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
               <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextLesson')}</AppText>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.swipeHint, { bottom: insets.bottom + 16 }]}>
+            <View style={[styles.swipeHint, { bottom: tabBarH + 12 }]}>
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
               <AppText style={styles.swipeHintText}>{t('swipeHint')}</AppText>
             </View>
@@ -524,6 +534,15 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      <ShareSheet
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        title={lesson?.title}
+        message={lesson && course ? `📚 Check out "${lesson.title}" from "${course.title}" on EduTok!` : ''}
+        url={lesson ? lessonLink(lesson.id, course?.id) : ''}
+        onShared={() => lesson && recordShare(lesson.id)}
+      />
     </View>
   );
 };
@@ -594,10 +613,12 @@ const styles = StyleSheet.create({
     fontSize: SIZES.sm,
     lineHeight: 18,
   },
-  // Bottom-center, below the caption box (bottom: 180) and above the info block
+  // Bottom-center, above the caption box (bottom: 180) — this screen's info
+  // cluster (title + lesson counter + meta + progress dots) is taller than
+  // ForYou's, so lower positions get buried inside it
   imgDots: {
     position: 'absolute',
-    bottom: 160,
+    bottom: 215,
     left: 0,
     right: 0,
     flexDirection: 'row',

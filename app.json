@@ -2,6 +2,7 @@
   "expo": {
     "name": "EduTok",
     "slug": "edutok",
+    "scheme": "edutok",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +17,11 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.edutok.app"
+      "bundleIdentifier": "com.edutok.app",
+      "associatedDomains": [
+        "applinks:edutok.app",
+        "applinks:www.edutok.app"
+      ]
     },
     "android": {
       "package": "com.edutok.app",
@@ -24,7 +29,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "edutok.app" },
+            { "scheme": "https", "host": "www.edutok.app" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
