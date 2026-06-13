@@ -283,6 +283,16 @@ export const searchCourses = async ({ q, category }) => {
   return Array.isArray(list) ? list.map((c) => mapCourse(c)) : [];
 };
 
+// Category chips are DB-driven (managed from the admin dashboard). Public
+// endpoint — works with or without an auth token.
+export const fetchCategories = async () => {
+  const data = await get('/search/categories');
+  const list = data.data ?? data.categories ?? data;
+  return Array.isArray(list)
+    ? list.map((c) => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }))
+    : [];
+};
+
 export const fetchOrganizations = async () => {
   const data = await get('/organizations');
   const list = data.data ?? data.organizations ?? data;

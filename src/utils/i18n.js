@@ -146,7 +146,7 @@ const translations = {
     coursePrivate: 'Private',
     viewInstructor: 'View Instructor',
     // Search
-    searchPlaceholderFull: 'Search courses, topics, organizations...',
+    searchPlaceholderFull: 'Search courses...',
     courseFound: 'course found',
     coursesFound: 'courses found',
     searchingLabel: 'Searching...',
@@ -373,7 +373,7 @@ const translations = {
     coursePrivate: 'ግላዊ',
     viewInstructor: 'አስተማሪ ይመልከቱ',
     // Search
-    searchPlaceholderFull: 'ኮርሶችን፣ ርዕሶችን፣ ድርጅቶችን ፈልግ...',
+    searchPlaceholderFull: 'ኮርሶችን ፈልግ...',
     courseFound: 'ኮርስ ተገኘ',
     coursesFound: 'ኮርሶች ተገኙ',
     searchingLabel: 'በመፈለግ ላይ...',

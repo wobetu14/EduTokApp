@@ -12,7 +12,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
-import { searchCourses as searchCoursesApi } from '../services/apiService';
+import { searchCourses as searchCoursesApi, fetchCategories } from '../services/apiService';
+
+// Dashboard-authored categories may carry an icon name that isn't a valid
+// Ionicons glyph (e.g. "brain"); fall back so the chip still renders.
+const safeIcon = (name) =>
+  name && Ionicons.glyphMap?.[name] ? name : 'pricetags-outline';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
@@ -60,6 +65,19 @@ const SearchScreen = ({ navigation }) => {
 
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  // Seed with the bundled list so chips show instantly; replace with the
+  // DB-driven list once the API responds.
+  const [categories, setCategories] = useState(CATEGORIES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCategories()
+      .then((cats) => {
+        if (!cancelled && cats.length) setCategories(cats);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const getOrg = useCallback(
     (orgId) => organizations.find((o) => o.id === orgId),
@@ -67,7 +85,7 @@ const SearchScreen = ({ navigation }) => {
   );
 
   // The backend stores the category LABEL on course.category (not the id).
-  const catLabel = selectedCat ? CATEGORIES.find((c) => c.id === selectedCat)?.label : null;
+  const catLabel = selectedCat ? categories.find((c) => c.id === selectedCat)?.label : null;
 
   // Local filter — used for category-only browsing (the /search endpoint
   // requires a query string) and as an offline fallback if the API fails.
@@ -147,7 +165,7 @@ const SearchScreen = ({ navigation }) => {
       {/* Category filters */}
       <FlatList
         horizontal
-        data={CATEGORIES}
+        data={categories}
         keyExtractor={(c) => c.id}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -159,7 +177,7 @@ const SearchScreen = ({ navigation }) => {
             activeOpacity={0.8}
           >
             <Ionicons
-              name={item.icon}
+              name={safeIcon(item.icon)}
               size={14}
               color={selectedCat === item.id ? item.color : COLORS.textSecondary}
             />
