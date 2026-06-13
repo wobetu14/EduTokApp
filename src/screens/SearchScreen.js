@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
+import { searchCourses as searchCoursesApi } from '../services/apiService';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
@@ -20,23 +21,26 @@ import { useTabBar } from '../context/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../utils/constants';
 
-const SearchResultCard = ({ course, org, onPress }) => (
-  <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
-    <Image source={{ uri: course.thumbnail }} style={styles.thumb} />
-    <View style={styles.info}>
-      <AppText style={styles.title} numberOfLines={2}>{course.title}</AppText>
-      {org && <AppText style={styles.orgName}>{org.name}</AppText>}
-      <AppText style={styles.desc} numberOfLines={2}>{truncateText(course.description, 60)}</AppText>
-      <View style={styles.meta}>
-        <Ionicons name="book-outline" size={12} color={COLORS.textMuted} />
-        <AppText style={styles.metaText}>{course.lessonIds.length} lessons</AppText>
-        <View style={styles.dot} />
-        <Ionicons name="people-outline" size={12} color={COLORS.textMuted} />
-        <AppText style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</AppText>
+const SearchResultCard = ({ course, org, onPress }) => {
+  const lessonCount = course.lessonIds?.length || course.lessonCount || 0;
+  return (
+    <TouchableOpacity style={styles.resultCard} onPress={onPress} activeOpacity={0.85}>
+      <Image source={{ uri: course.thumbnail }} style={styles.thumb} />
+      <View style={styles.info}>
+        <AppText style={styles.title} numberOfLines={2}>{course.title}</AppText>
+        {org && <AppText style={styles.orgName}>{org.name}</AppText>}
+        <AppText style={styles.desc} numberOfLines={2}>{truncateText(course.description, 60)}</AppText>
+        <View style={styles.meta}>
+          <Ionicons name="book-outline" size={12} color={COLORS.textMuted} />
+          <AppText style={styles.metaText}>{lessonCount} lessons</AppText>
+          <View style={styles.dot} />
+          <Ionicons name="people-outline" size={12} color={COLORS.textMuted} />
+          <AppText style={styles.metaText}>{formatLargeNumber(course.enrolledCount)}</AppText>
+        </View>
       </View>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
 const SearchScreen = ({ navigation }) => {
   const { visibleCourses: courses, organizations, isLoading } = useCourses();
@@ -54,24 +58,69 @@ const SearchScreen = ({ navigation }) => {
     lastScrollY.current = y;
   };
 
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
   const getOrg = useCallback(
     (orgId) => organizations.find((o) => o.id === orgId),
     [organizations]
   );
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return courses.filter((c) => {
-      const matchesCat = !selectedCat || c.category === selectedCat;
-      if (!q) return matchesCat;
-      const matchesQuery =
-        c.title.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
-        c.tags.some((t) => t.includes(q)) ||
-        getOrg(c.organizationId)?.name.toLowerCase().includes(q);
-      return matchesCat && matchesQuery;
-    });
-  }, [query, selectedCat, courses, getOrg]);
+  // The backend stores the category LABEL on course.category (not the id).
+  const catLabel = selectedCat ? CATEGORIES.find((c) => c.id === selectedCat)?.label : null;
+
+  // Local filter — used for category-only browsing (the /search endpoint
+  // requires a query string) and as an offline fallback if the API fails.
+  const localFilter = useCallback(
+    (q, label) =>
+      courses.filter((c) => {
+        const matchesCat = !label || c.category === label;
+        if (!q) return matchesCat;
+        const matchesQuery =
+          c.title.toLowerCase().includes(q) ||
+          c.description.toLowerCase().includes(q) ||
+          (c.tags || []).some((tag) => tag.toLowerCase().includes(q)) ||
+          getOrg(c.organizationId)?.name.toLowerCase().includes(q);
+        return matchesCat && matchesQuery;
+      }),
+    [courses, getOrg]
+  );
+
+  useEffect(() => {
+    const q = query.trim();
+
+    // No query → show the full course list (landing) or, if a category is
+    // selected, the courses already loaded in context filtered by category.
+    // The /search endpoint requires a query string, so this stays local.
+    if (!q) {
+      setResults(localFilter('', catLabel));
+      setSearching(false);
+      return;
+    }
+
+    // Query present → hit the server search, debounced.
+    setSearching(true);
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        const apiCourses = await searchCoursesApi({ q, category: catLabel });
+        if (cancelled) return;
+        // Prefer the in-context copy (carries lessonIds / engagement data),
+        // fall back to the mapped API result for anything not loaded locally.
+        const byId = new Map(courses.map((c) => [c.id, c]));
+        setResults(apiCourses.map((c) => byId.get(c.id) ?? c));
+      } catch (e) {
+        if (!cancelled) setResults(localFilter(q.toLowerCase(), catLabel));
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [query, selectedCat, catLabel, courses, localFilter]);
 
   return (
     <View style={styles.container}>
@@ -111,8 +160,8 @@ const SearchScreen = ({ navigation }) => {
           >
             <Ionicons
               name={item.icon}
-              size={13}
-              color={selectedCat === item.id ? item.color : COLORS.textMuted}
+              size={14}
+              color={selectedCat === item.id ? item.color : COLORS.textSecondary}
             />
             <AppText
               style={[
@@ -125,14 +174,24 @@ const SearchScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
         showsHorizontalScrollIndicator={false}
+        style={styles.catListWrap}
         contentContainerStyle={styles.catList}
       />
 
       {/* Results count */}
       {(query || selectedCat) && (
-        <AppText style={styles.resultCount}>
-          {results.length} {results.length === 1 ? t('courseFound') : t('coursesFound')}
-        </AppText>
+        <View style={styles.resultCountRow}>
+          {searching ? (
+            <>
+              <ActivityIndicator size="small" color={COLORS.textMuted} />
+              <AppText style={styles.resultCount}>{t('searchingLabel')}</AppText>
+            </>
+          ) : (
+            <AppText style={styles.resultCount}>
+              {results.length} {results.length === 1 ? t('courseFound') : t('coursesFound')}
+            </AppText>
+          )}
+        </View>
       )}
 
       {/* Results */}
@@ -182,44 +241,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 16,
-    marginBottom: 8,
-    gap: 10,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    marginBottom: 6,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
     color: COLORS.text,
-    fontSize: SIZES.base,
+    fontSize: SIZES.md,
+    paddingVertical: 0,
+    height: 24,
+  },
+  // flexGrow:0 stops the horizontal list from expanding to fill the column,
+  // which was stretching the pill chips to full screen height.
+  catListWrap: {
+    flexGrow: 0,
   },
   catList: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 8,
     gap: 8,
+    alignItems: 'center',
   },
   catChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    height: 36,
+    gap: 6,
+    paddingHorizontal: 14,
     borderRadius: SIZES.borderRadiusFull,
-    backgroundColor: COLORS.card,
-    borderWidth: 1.5,
+    backgroundColor: COLORS.cardAlt,
+    borderWidth: 1,
     borderColor: COLORS.border,
   },
   catChipText: {
-    color: COLORS.textMuted,
+    color: COLORS.text,
     fontSize: SIZES.sm,
     fontWeight: '600',
+    includeFontPadding: false,
+  },
+  resultCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   resultCount: {
     color: COLORS.textSecondary,
     fontSize: SIZES.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
   },
   resultList: { paddingTop: 8, gap: 12, paddingBottom: 100 },
   resultCard: {

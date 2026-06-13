@@ -108,6 +108,7 @@ const mapCourse = (c, lessons = []) => ({
   visibility:     c.visibility,
   enrolledCount:  c.enrolled_count ?? 0,
   totalDuration:  c.total_duration_secs ?? 0,
+  lessonCount:    lessons.length || c.lesson_count || c._count?.lessons || 0,
   lessonIds:      lessons.map((l) => l.id),
   _lessons:       lessons,
   _isEnrolled:    c.is_enrolled ?? false,
@@ -266,6 +267,20 @@ export const fetchCourseDetail = async (courseId) => {
   // Inject course_id into each lesson; the GET /courses/:id SELECT omits it
   const lessons = (raw.lessons ?? []).map((l) => mapLesson({ ...l, course_id: courseId }));
   return mapCourse(raw, lessons);
+};
+
+// Server-side course search. `category` must be the category LABEL (e.g.
+// "Engineering"), which is what the backend stores on course.category.
+// Returns mapped course objects; the screen prefers its in-context copy
+// (which carries lessonIds/_lessons) and falls back to these for any
+// result not already loaded locally.
+export const searchCourses = async ({ q, category }) => {
+  const params = new URLSearchParams({ q, type: 'courses', limit: '50' });
+  if (category) params.set('category', category);
+  const data = await get(`/search?${params.toString()}`);
+  const payload = data.data ?? data;
+  const list = payload.courses?.data ?? payload.courses ?? [];
+  return Array.isArray(list) ? list.map((c) => mapCourse(c)) : [];
 };
 
 export const fetchOrganizations = async () => {
