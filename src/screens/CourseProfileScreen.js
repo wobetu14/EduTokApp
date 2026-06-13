@@ -21,8 +21,10 @@ import { formatLargeNumber, formatMinutes } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
 import { useToast } from '../context/ToastContext';
+import { useTabBar } from '../context/TabBarContext';
 import { scheduleEnrollmentNotification } from '../services/notificationService';
 import AppText from '../components/AppText';
+import { useFocusEffect } from '@react-navigation/native';
 
 const CourseProfileScreen = ({ route, navigation }) => {
   const { courseId } = route.params;
@@ -43,6 +45,27 @@ const CourseProfileScreen = ({ route, navigation }) => {
   } = useCourses();
 
   const { t } = useTranslation();
+  const { hideTabBar, showTabBar } = useTabBar();
+
+  // Hide the bottom tab bar while scrolling down, reveal on scroll up —
+  // same behaviour as the Explore/Search/Profile tabs.
+  const lastScrollY = useRef(0);
+  const onScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y - lastScrollY.current > 10) hideTabBar();
+    else if (lastScrollY.current - y > 10) showTabBar();
+    lastScrollY.current = y;
+  };
+
+  // This is a pushed screen, not a tab root — make sure we never leave the
+  // tab bar hidden when navigating away (or arriving with it hidden).
+  useFocusEffect(
+    useCallback(() => {
+      showTabBar();
+      return () => showTabBar();
+    }, [showTabBar])
+  );
+
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
   const org = useMemo(
     () => organizations.find((o) => o.id === course?.organizationId),
@@ -130,7 +153,12 @@ const CourseProfileScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+    >
       {/* Hero */}
       <View style={[styles.hero, { height: heroH }]}>
         <Image source={{ uri: course.thumbnail }} style={styles.heroImage} />
