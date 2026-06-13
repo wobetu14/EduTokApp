@@ -136,9 +136,16 @@ export const AuthProvider = ({ children }) => {
     return updated;
   }, []);
 
+  // Server revokes all sessions on success; the caller signs the user out so
+  // they re-authenticate with the new password.
+  const changePassword = useCallback(
+    (currentPassword, newPassword) => api.changePassword(currentPassword, newPassword),
+    []
+  );
+
   return (
     <AuthContext.Provider
-      value={{ ...state, signIn, signUp, signOut, completeOnboarding, updateUser }}
+      value={{ ...state, signIn, signUp, signOut, completeOnboarding, updateUser, changePassword }}
     >
       {children}
     </AuthContext.Provider>

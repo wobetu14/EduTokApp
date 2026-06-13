@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { get, post, patch, del, saveTokens, clearTokens } from './httpClient';
+import { get, post, patch, del, upload, saveTokens, clearTokens } from './httpClient';
 
 // --- Data mappers (snake_case API → camelCase app) ---
 
@@ -7,8 +7,11 @@ const mapUser = (u) => ({
   id:                   u.id,
   username:             u.username,
   fullName:             u.full_name,
+  role:                 u.role ?? 'learner',
   phone:                u.phone ?? '',
   bio:                  u.bio ?? '',
+  ageRange:             u.age_range ?? null,
+  gender:               u.gender ?? null,
   avatar:               u.avatar_url ?? `https://picsum.photos/seed/${u.username}/200/200`,
   preferences:          u.preferences?.preferred_categories ?? [],
   onboardingCompleted:  u.preferences?.onboarding_completed ?? false,
@@ -221,9 +224,13 @@ export const updateUser = async (updates) => {
   // strips any field not in its schema, so each group must go to its own route.
   const profile = {};
   if (updates.fullName !== undefined) profile.full_name  = updates.fullName;
+  if (updates.username !== undefined) profile.username   = updates.username;
+  if (updates.phone    !== undefined) profile.phone      = updates.phone;
   if (updates.bio      !== undefined) profile.bio        = updates.bio;
   if (updates.avatar   !== undefined) profile.avatar_url = updates.avatar;
   if (updates.language !== undefined) profile.lang_pref  = updates.language;
+  if (updates.ageRange !== undefined) profile.age_range  = updates.ageRange;
+  if (updates.gender   !== undefined) profile.gender     = updates.gender;
 
   const settings = {};
   if (updates.notificationsEnabled !== undefined) settings.notifications_enabled = updates.notificationsEnabled;
@@ -234,6 +241,27 @@ export const updateUser = async (updates) => {
     await patch('/users/me/preferences', { preferred_categories: updates.preferences });
   }
   return fetchCurrentUser();
+};
+
+// Uploads a picked image to Cloudinary via the media module and returns the
+// secure URL. `asset` is an expo-image-picker asset ({ uri, fileName, mimeType }).
+export const uploadAvatar = async (asset) => {
+  const fd = new FormData();
+  fd.append('file', {
+    uri:  asset.uri,
+    name: asset.fileName || `avatar.${(asset.mimeType || 'image/jpeg').split('/')[1] || 'jpg'}`,
+    type: asset.mimeType || 'image/jpeg',
+  });
+  fd.append('resource_type', 'avatar');
+  const data = await upload('/media/upload', fd);
+  const d = data.data ?? data;
+  return d.url;
+};
+
+// Self-service password change. The server revokes all sessions on success and
+// returns no tokens, so the caller must sign the user out afterwards.
+export const changePassword = async (currentPassword, newPassword) => {
+  await patch('/users/me/password', { currentPassword, newPassword });
 };
 
 export const updatePreferences = async ({ preferences, onboardingCompleted }) => {

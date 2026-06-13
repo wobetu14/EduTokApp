@@ -103,6 +103,21 @@ export const PRESET_AVATARS = [
   'https://picsum.photos/seed/av12/200/200',
 ];
 
+// Learner demographics (profile dialog only). `key` is stored on the API;
+// age labels are numeric (no translation), gender uses i18n labelKey.
+export const AGE_RANGES = [
+  { key: 'under_18', label: 'Under 18' },
+  { key: '18_24',    label: '18–24' },
+  { key: '25_34',    label: '25–34' },
+  { key: '35_44',    label: '35–44' },
+  { key: '45_plus',  label: '45+' },
+];
+
+export const GENDERS = [
+  { key: 'male',   labelKey: 'genderMale' },
+  { key: 'female', labelKey: 'genderFemale' },
+];
+
 export const HIGH_CONTRAST_COLORS = {
   background: '#000000',
   surface: '#0A0A0A',

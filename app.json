@@ -52,6 +52,12 @@
           "color": "#FE2C55"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EduTok needs access to your photos so you can set a profile picture."
+        }
+      ],
       "expo-video"
     ]
   }

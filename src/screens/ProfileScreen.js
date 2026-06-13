@@ -11,10 +11,13 @@ import {
   Modal,
   FlatList,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SIZES, CATEGORIES, BADGE_DEFS, PRESET_AVATARS } from '../utils/constants';
+import * as ImagePicker from 'expo-image-picker';
+import { COLORS, SIZES, CATEGORIES, BADGE_DEFS, PRESET_AVATARS, AGE_RANGES, GENDERS } from '../utils/constants';
+import { uploadAvatar } from '../services/apiService';
 import ProgressBar from '../components/ProgressBar';
 import { useAuth } from '../context/AuthContext';
 import { useCourses } from '../context/CourseContext';
@@ -41,7 +44,10 @@ const SectionTitle = ({ children }) => (
 );
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, signOut, updateUser } = useAuth();
+  const { user, signOut, updateUser, changePassword } = useAuth();
+  // This app is learner-only; the learner role is the "student" we show
+  // demographic fields for.
+  const isStudent = (user?.role ?? 'learner') === 'learner';
   const { hPad, formMaxW } = useResponsive();
   const { t } = useTranslation();
   const { fontScale, highContrast, setFontScale, setHighContrast } = useA11y();
@@ -93,10 +99,20 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ fullName: user?.fullName || '', bio: user?.bio || '', avatar: user?.avatar || '' });
+  const [editForm, setEditForm] = useState({
+    fullName: user?.fullName || '', username: user?.username || '', phone: user?.phone || '',
+    bio: user?.bio || '', avatar: user?.avatar || '', ageRange: user?.ageRange || '', gender: user?.gender || '',
+  });
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [activeTab, setActiveTab] = useState('progress');
   const [selectedBadge, setSelectedBadge] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwError, setPwError] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const earnedBadgeIds = useMemo(() => new Set(badges.map((b) => b.id)), [badges]);
 
@@ -146,10 +162,97 @@ const ProfileScreen = ({ navigation }) => {
     return weeks.map((w, i) => ({ label: w.slice(5), seconds: vals[i], pct: vals[i] / max }));
   }, [progress.completedLessons, courses, getLessonsForCourse]);
 
-  const handleSaveProfile = async () => {
-    await updateUser(editForm);
-    setShowEditModal(false);
+  const openEditModal = () => {
+    setEditForm({
+      fullName: user?.fullName || '', username: user?.username || '', phone: user?.phone || '',
+      bio: user?.bio || '', avatar: user?.avatar || '', ageRange: user?.ageRange || '', gender: user?.gender || '',
+    });
+    setEditError('');
     setShowAvatarPicker(false);
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (editSaving) return;
+    const username = editForm.username.trim();
+    const phone = editForm.phone.trim();
+    if (!editForm.fullName.trim()) { setEditError(t('fullNameRequired')); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) { setEditError(t('usernameInvalid')); return; }
+    if (phone && phone.replace(/\D/g, '').length < 7) { setEditError(t('phoneInvalid')); return; }
+
+    setEditError('');
+    setEditSaving(true);
+    try {
+      await updateUser({
+        fullName: editForm.fullName.trim(),
+        username,
+        phone: phone || undefined,
+        bio: editForm.bio,
+        avatar: editForm.avatar,
+        ...(isStudent ? { ageRange: editForm.ageRange || undefined, gender: editForm.gender || undefined } : {}),
+      });
+      setShowEditModal(false);
+      setShowAvatarPicker(false);
+    } catch (e) {
+      setEditError(e?.message || t('photoUploadFailed'));
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    if (uploadingAvatar) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(t('changeAvatar'), t('photoPermissionNeeded'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadAvatar(result.assets[0]);
+      setEditForm((f) => ({ ...f, avatar: url }));
+      setShowAvatarPicker(false);
+    } catch (e) {
+      Alert.alert(t('changeAvatar'), e?.message || t('photoUploadFailed'));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const openPasswordModal = () => {
+    setPwForm({ current: '', next: '', confirm: '' });
+    setPwError('');
+    setShowPasswordModal(true);
+  };
+
+  const handleChangePassword = async () => {
+    const { current, next, confirm } = pwForm;
+    if (!current) { setPwError(t('currentPasswordRequired')); return; }
+    if (next.length < 8) { setPwError(t('passwordTooShort')); return; }
+    if (next !== confirm) { setPwError(t('passwordsDontMatch')); return; }
+    if (next === current) { setPwError(t('newPasswordSameAsCurrent')); return; }
+
+    setPwError('');
+    setPwSubmitting(true);
+    try {
+      await changePassword(current, next);
+      setShowPasswordModal(false);
+      // Server revoked all sessions — sign out so the user re-authenticates.
+      Alert.alert(t('passwordChanged'), t('passwordChangedMsg'), [
+        { text: 'OK', onPress: signOut },
+      ]);
+    } catch (e) {
+      setPwError(e?.message || t('photoUploadFailed'));
+    } finally {
+      setPwSubmitting(false);
+    }
   };
 
   const handleSignOut = () => {
@@ -180,7 +283,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             style={styles.editBtn}
-            onPress={() => setShowEditModal(true)}
+            onPress={openEditModal}
           >
             <Ionicons name="pencil" size={16} color={COLORS.secondary} />
           </TouchableOpacity>
@@ -488,6 +591,11 @@ const ProfileScreen = ({ navigation }) => {
             {user?.phoneVerified ? t('verified') : t('notVerified')}
           </AppText>
         </View>
+        <TouchableOpacity style={styles.settingRow} onPress={openPasswordModal} activeOpacity={0.7}>
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
+          <AppText style={styles.settingLabel}>{t('changePassword')}</AppText>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
         <View style={styles.settingRow}>
           <Ionicons name="text" size={20} color={COLORS.textSecondary} />
           <AppText style={styles.settingLabel}>{t('fontSize')}</AppText>
@@ -537,53 +645,195 @@ const ProfileScreen = ({ navigation }) => {
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
-            {/* Avatar picker */}
-            <TouchableOpacity style={styles.avatarPickerBtn} onPress={() => setShowAvatarPicker((v) => !v)}>
-              <Image
-                source={{ uri: editForm.avatar || user?.avatar || `https://picsum.photos/seed/profile/200/200` }}
-                style={styles.editAvatar}
+            <ScrollView style={styles.editScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Avatar: tap to upload a real photo from the device */}
+              <TouchableOpacity style={styles.avatarPickerBtn} onPress={handlePickPhoto} activeOpacity={0.8}>
+                <View>
+                  <Image
+                    source={{ uri: editForm.avatar || user?.avatar || `https://picsum.photos/seed/profile/200/200` }}
+                    style={styles.editAvatar}
+                  />
+                  {uploadingAvatar && (
+                    <View style={styles.avatarUploadOverlay}>
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  )}
+                  <View style={styles.editAvatarBadge}>
+                    <Ionicons name="camera" size={14} color="#fff" />
+                  </View>
+                </View>
+                <AppText style={styles.changeAvatarText}>
+                  {uploadingAvatar ? t('uploadingPhoto') : t('uploadPhoto')}
+                </AppText>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowAvatarPicker((v) => !v)} style={styles.presetToggle}>
+                <Ionicons name="grid-outline" size={14} color={COLORS.secondary} />
+                <AppText style={styles.presetToggleText}>{t('chooseAPreset')}</AppText>
+              </TouchableOpacity>
+              {showAvatarPicker && (
+                <View style={styles.avatarGridWrap}>
+                  {PRESET_AVATARS.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      onPress={() => { setEditForm((f) => ({ ...f, avatar: item })); setShowAvatarPicker(false); }}
+                      style={[styles.avatarOption, editForm.avatar === item && styles.avatarOptionSelected]}
+                    >
+                      <Image source={{ uri: item }} style={styles.avatarOptionImg} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <AppText style={styles.editLabel}>{t('fullName')}</AppText>
+              <TextInput
+                style={styles.editInput}
+                value={editForm.fullName}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, fullName: v }))}
+                placeholder={t('yourFullNamePlaceholder')}
+                placeholderTextColor={COLORS.textMuted}
               />
-              <View style={styles.editAvatarBadge}>
-                <Ionicons name="camera" size={14} color="#fff" />
-              </View>
-              <AppText style={styles.changeAvatarText}>{t('changeAvatar')}</AppText>
+
+              <AppText style={styles.editLabel}>{t('username')}</AppText>
+              <TextInput
+                style={styles.editInput}
+                value={editForm.username}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, username: v }))}
+                placeholder={t('username')}
+                placeholderTextColor={COLORS.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <AppText style={styles.fieldHint}>{t('usernameHint')}</AppText>
+
+              <AppText style={styles.editLabel}>{t('phoneNumber')}</AppText>
+              <TextInput
+                style={styles.editInput}
+                value={editForm.phone}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))}
+                placeholder={t('phoneNumber')}
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="phone-pad"
+              />
+              <AppText style={styles.fieldHint}>{t('phoneChangeHint')}</AppText>
+
+              <AppText style={styles.editLabel}>{t('bioLabel')}</AppText>
+              <TextInput
+                style={[styles.editInput, styles.editTextarea]}
+                value={editForm.bio}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, bio: v }))}
+                placeholder={t('aboutYourselfPlaceholder')}
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                maxLength={160}
+              />
+
+              {isStudent && (
+                <>
+                  <AppText style={styles.editLabel}>{t('ageRangeLabel')}</AppText>
+                  <View style={styles.chipWrap}>
+                    {AGE_RANGES.map((a) => {
+                      const sel = editForm.ageRange === a.key;
+                      return (
+                        <TouchableOpacity
+                          key={a.key}
+                          style={[styles.choiceChip, sel && styles.choiceChipActive]}
+                          onPress={() => setEditForm((f) => ({ ...f, ageRange: sel ? '' : a.key }))}
+                          activeOpacity={0.8}
+                        >
+                          <AppText style={[styles.choiceChipText, sel && styles.choiceChipTextActive]}>{a.label}</AppText>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <AppText style={styles.editLabel}>{t('genderLabel')}</AppText>
+                  <View style={styles.chipWrap}>
+                    {GENDERS.map((g) => {
+                      const sel = editForm.gender === g.key;
+                      return (
+                        <TouchableOpacity
+                          key={g.key}
+                          style={[styles.choiceChip, styles.genderChip, sel && styles.choiceChipActive]}
+                          onPress={() => setEditForm((f) => ({ ...f, gender: sel ? '' : g.key }))}
+                          activeOpacity={0.8}
+                        >
+                          <AppText style={[styles.choiceChipText, sel && styles.choiceChipTextActive]}>{t(g.labelKey)}</AppText>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </ScrollView>
+
+            {!!editError && <AppText style={styles.pwError}>{editError}</AppText>}
+            <TouchableOpacity
+              style={[styles.saveBtn, editSaving && { opacity: 0.6 }]}
+              onPress={handleSaveProfile}
+              disabled={editSaving}
+            >
+              {editSaving
+                ? <ActivityIndicator color="#fff" />
+                : <AppText style={styles.saveBtnText}>{t('saveChanges')}</AppText>}
             </TouchableOpacity>
-            {showAvatarPicker && (
-              <FlatList
-                data={PRESET_AVATARS}
-                keyExtractor={(item) => item}
-                numColumns={4}
-                style={styles.avatarGrid}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => { setEditForm((f) => ({ ...f, avatar: item })); setShowAvatarPicker(false); }}
-                    style={[styles.avatarOption, editForm.avatar === item && styles.avatarOptionSelected]}
-                  >
-                    <Image source={{ uri: item }} style={styles.avatarOptionImg} />
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-            <AppText style={styles.editLabel}>{t('fullName')}</AppText>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.editModal, { maxWidth: formMaxW, width: '100%', alignSelf: 'center' }]}>
+            <View style={styles.editModalHeader}>
+              <AppText style={styles.editModalTitle}>{t('changePassword')}</AppText>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <AppText style={styles.editLabel}>{t('currentPassword')}</AppText>
             <TextInput
               style={styles.editInput}
-              value={editForm.fullName}
-              onChangeText={(v) => setEditForm((f) => ({ ...f, fullName: v }))}
-              placeholder={t('yourFullNamePlaceholder')}
+              value={pwForm.current}
+              onChangeText={(v) => setPwForm((f) => ({ ...f, current: v }))}
+              placeholder={t('currentPassword')}
               placeholderTextColor={COLORS.textMuted}
+              secureTextEntry
+              autoCapitalize="none"
             />
-            <AppText style={styles.editLabel}>{t('bioLabel')}</AppText>
+            <AppText style={styles.editLabel}>{t('newPassword')}</AppText>
             <TextInput
-              style={[styles.editInput, styles.editTextarea]}
-              value={editForm.bio}
-              onChangeText={(v) => setEditForm((f) => ({ ...f, bio: v }))}
-              placeholder={t('aboutYourselfPlaceholder')}
+              style={styles.editInput}
+              value={pwForm.next}
+              onChangeText={(v) => setPwForm((f) => ({ ...f, next: v }))}
+              placeholder={t('newPassword')}
               placeholderTextColor={COLORS.textMuted}
-              multiline
-              maxLength={160}
+              secureTextEntry
+              autoCapitalize="none"
             />
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
-              <AppText style={styles.saveBtnText}>{t('saveChanges')}</AppText>
+            <AppText style={styles.editLabel}>{t('confirmPassword')}</AppText>
+            <TextInput
+              style={styles.editInput}
+              value={pwForm.confirm}
+              onChangeText={(v) => setPwForm((f) => ({ ...f, confirm: v }))}
+              placeholder={t('confirmPassword')}
+              placeholderTextColor={COLORS.textMuted}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            {!!pwError && <AppText style={styles.pwError}>{pwError}</AppText>}
+            <TouchableOpacity
+              style={[styles.saveBtn, pwSubmitting && { opacity: 0.6 }]}
+              onPress={handleChangePassword}
+              disabled={pwSubmitting}
+            >
+              {pwSubmitting
+                ? <ActivityIndicator color="#fff" />
+                : <AppText style={styles.saveBtnText}>{t('changePasswordCta')}</AppText>}
             </TouchableOpacity>
           </View>
         </View>
@@ -789,7 +1039,19 @@ const styles = StyleSheet.create({
   signOutText: { color: COLORS.error, fontWeight: '700', fontSize: SIZES.base },
   // Edit modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  editModal: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  editModal: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  editScroll: { flexShrink: 1 },
+  fieldHint: { color: COLORS.textMuted, fontSize: SIZES.xs, marginTop: -6, marginBottom: 12 },
+  avatarGridWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  choiceChip: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: SIZES.borderRadiusFull,
+    backgroundColor: COLORS.cardAlt, borderWidth: 1, borderColor: COLORS.border,
+  },
+  genderChip: { minWidth: 80, alignItems: 'center' },
+  choiceChipActive: { backgroundColor: COLORS.primary + '22', borderColor: COLORS.primary },
+  choiceChipText: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '600' },
+  choiceChipTextActive: { color: COLORS.primary },
   editModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   editModalTitle: { color: COLORS.text, fontSize: SIZES.lg, fontWeight: '700' },
   editLabel: { color: COLORS.textSecondary, fontSize: SIZES.sm, fontWeight: '600', marginBottom: 6 },
@@ -802,16 +1064,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   editTextarea: { height: 90, textAlignVertical: 'top' },
-  avatarPickerBtn: { alignItems: 'center', marginBottom: 16, position: 'relative' },
+  avatarPickerBtn: { alignItems: 'center', marginBottom: 8, position: 'relative' },
   editAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.card },
+  avatarUploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 36,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   editAvatarBadge: {
-    position: 'absolute', bottom: 22, right: '38%',
+    position: 'absolute', bottom: 0, right: 0,
     width: 22, height: 22, borderRadius: 11,
     backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: COLORS.card,
   },
   changeAvatarText: { color: COLORS.secondary, fontSize: SIZES.xs, fontWeight: '600', marginTop: 4 },
-  avatarGrid: { maxHeight: 160, marginBottom: 12 },
-  avatarOption: { flex: 1, margin: 4, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
+  presetToggle: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 5, marginBottom: 12 },
+  presetToggleText: { color: COLORS.secondary, fontSize: SIZES.xs, fontWeight: '600' },
+  pwError: { color: COLORS.error, fontSize: SIZES.xs, marginBottom: 8, marginTop: 2 },
+  avatarOption: { width: '22%', margin: '1.5%', borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
   avatarOptionSelected: { borderColor: COLORS.secondary },
   avatarOptionImg: { width: '100%', aspectRatio: 1 },
   saveBtn: {

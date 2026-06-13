@@ -121,6 +121,42 @@ export const request = async (method, path, { body, auth = true, retry = true } 
   return json;
 };
 
+// --- Multipart upload (FormData) ---
+
+// Separate from request() because multipart must NOT set Content-Type (fetch
+// adds the boundary itself) and the body is sent as-is, not JSON.stringify'd.
+export const upload = async (path, formData, { retry = true } = {}) => {
+  const headers = {};
+  const token = await getAccessToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetchWithTimeout(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401 && retry) {
+    try {
+      await refreshAccessToken();
+      return upload(path, formData, { retry: false });
+    } catch {
+      await clearTokens();
+      _onSessionExpired?.();
+      throw new ApiError(401, 'Session expired. Please sign in again.');
+    }
+  }
+
+  let json;
+  try { json = await res.json(); } catch { json = {}; }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, json.message || json.error || 'Upload failed', json);
+  }
+
+  return json;
+};
+
 // --- Convenience wrappers ---
 
 export const get   = (path, opts)        => request('GET',    path, opts);
