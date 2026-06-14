@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import VideoPlayer from '../components/VideoPlayer';
 import { COLORS, SIZES } from '../utils/constants';
 import { formatDuration } from '../utils/helpers';
@@ -238,6 +239,10 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
   const [slideH, setSlideH] = useState(H);
+  // Pause the video whenever this screen loses focus (navigated away to a
+  // course/profile, tab switched) so it stops playing in the background and
+  // never overlaps another player. Resumes automatically on return.
+  const isFocused = useIsFocused();
   const [shareVisible, setShareVisible] = useState(false);
 
   // Keep the bottom tab bar visible on this screen (it overlays the content);
@@ -465,7 +470,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         >
           <LessonSlide
             lesson={lesson}
-            active={videoActive}
+            active={videoActive && isFocused}
             isLiked={isLiked(lesson.id)}
             isFavorited={isFavorited(lesson.id)}
             isEnrolled={isEnrolled(courseId)}

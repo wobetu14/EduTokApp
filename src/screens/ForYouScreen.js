@@ -20,6 +20,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import VideoPlayer from '../components/VideoPlayer';
 import { COLORS, SIZES } from '../utils/constants';
 import { formatDuration, shuffle, formatLargeNumber } from '../utils/helpers';
@@ -352,6 +353,10 @@ const ForYouScreen = ({ navigation }) => {
   const [videoActive, setVideoActive] = useState(true);
   const [videoProgress, setVideoProgress] = useState(0);
   const [shareTarget, setShareTarget] = useState(null);
+  // Pause the feed video whenever this screen isn't focused (navigated away,
+  // tab switched) so it doesn't keep playing — and overlap another player —
+  // in the background. Resumes automatically on return.
+  const isFocused = useIsFocused();
 
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -660,7 +665,7 @@ const ForYouScreen = ({ navigation }) => {
           enrolled={isEnrolled(item.course.id)}
           liked={isLiked(item.lesson.id)}
           saved={isFavorited(item.lesson.id)}
-          videoActive={isActive && videoActive}
+          videoActive={isActive && videoActive && isFocused}
           videoProgress={isActive ? videoProgress : 0}
           onVideoProgress={isActive ? setVideoProgress : undefined}
           onEnroll={() => handleEnroll(item.course)}
