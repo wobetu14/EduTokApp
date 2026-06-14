@@ -3,8 +3,10 @@ import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../utils/constants';
+import { COLORS, SIZES } from '../utils/constants';
 import { useTabBar } from '../context/TabBarContext';
+import { useTranslation } from '../utils/useTranslation';
+import AppText from '../components/AppText';
 import {
   ForYouStack,
   ExploreStack,
@@ -15,15 +17,16 @@ import {
 const Tab = createBottomTabNavigator();
 
 const TAB_ITEMS = [
-  { name: 'ForYou',  label: 'Home',    icon: 'home',    iconOut: 'home-outline'    },
-  { name: 'Explore', label: 'Explore', icon: 'compass', iconOut: 'compass-outline' },
-  { name: 'Search',  label: 'Search',  icon: 'search',  iconOut: 'search-outline'  },
-  { name: 'Profile', label: 'Profile', icon: 'person',  iconOut: 'person-outline'  },
+  { name: 'ForYou',  labelKey: 'home',    icon: 'home',    iconOut: 'home-outline'    },
+  { name: 'Explore', labelKey: 'explore', icon: 'compass', iconOut: 'compass-outline' },
+  { name: 'Search',  labelKey: 'search',  icon: 'search',  iconOut: 'search-outline'  },
+  { name: 'Profile', labelKey: 'profile', icon: 'person',  iconOut: 'person-outline'  },
 ];
 
 const TabBar = ({ state, navigation }) => {
   const insets = useSafeAreaInsets();
   const { translateY, showTabBar } = useTabBar();
+  const { t } = useTranslation();
 
   return (
     <Animated.View style={[styles.tabBar, { paddingBottom: insets.bottom + 6, transform: [{ translateY }] }]}>
@@ -46,6 +49,12 @@ const TabBar = ({ state, navigation }) => {
                 color={focused ? COLORS.primary : COLORS.textMuted}
               />
             </View>
+            <AppText
+              numberOfLines={1}
+              style={[styles.tabLabel, focused && styles.tabLabelActive]}
+            >
+              {t(item.labelKey)}
+            </AppText>
           </TouchableOpacity>
         );
       })}
@@ -89,13 +98,23 @@ const styles = StyleSheet.create({
   },
   pill: {
     width: 48,
-    height: 40,
+    height: 34,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pillActive: {
     backgroundColor: COLORS.primary + '1E',
+  },
+  tabLabel: {
+    marginTop: 2,
+    fontSize: SIZES.xs,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });
 

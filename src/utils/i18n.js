@@ -47,6 +47,7 @@ const translations = {
     storageDesc: 'Save content offline',
     allowAndContinue: 'Allow & Continue',
     // Navigation
+    home: 'Home',
     forYou: 'For You',
     explore: 'Explore',
     search: 'Search',
@@ -323,6 +324,7 @@ const translations = {
     storageDesc: 'ይዘትን ከሳር ውጪ አስቀምጥ',
     allowAndContinue: 'ፍቀድ እና ቀጥል',
     // Navigation
+    home: 'መነሻ',
     forYou: 'ለአንተ',
     explore: 'ዳስስ',
     search: 'ፈልግ',
