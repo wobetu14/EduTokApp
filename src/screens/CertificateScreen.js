@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
+import { COLORS, SIZES } from '../utils/constants';
+import { useCourses } from '../context/CourseContext';
 import { buildCertificateHtml } from '../utils/certificateTemplate';
 import { useTranslation } from '../utils/useTranslation';
 import { t as _t } from '../utils/i18n';
@@ -33,8 +34,9 @@ const CATEGORY_PRIMARIES = {
 const GOLD = '#D4AF37';
 
 const CertificatePreview = ({ cert }) => {
-  const primary = CATEGORY_PRIMARIES[cert.category] || '#1B4332';
-  const catInfo = CATEGORIES.find((c) => c.id === cert.category);
+  const { getCategory } = useCourses();
+  const catInfo = getCategory(cert.category);
+  const primary = CATEGORY_PRIMARIES[catInfo?.id] || CATEGORY_PRIMARIES[cert.category] || '#1B4332';
   const date = new Date(cert.issuedAt);
   const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   // Server-issued certs carry a verifiable EDUTOK-XXXXXXXXXX number

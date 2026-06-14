@@ -80,12 +80,12 @@ export const STORAGE_KEYS = {
 };
 
 export const BADGE_DEFS = [
-  { id: 'first_lesson',    icon: 'star',       color: '#FFD700', labelKey: 'badgeFirstLesson',    check: (p)           => p.completedLessons.length >= 1 },
-  { id: 'week_warrior',    icon: 'flame',      color: '#FF5722', labelKey: 'badgeWeekWarrior',    check: (p)           => (p.streak || 0) >= 7 },
-  { id: 'quiz_master',     icon: 'trophy',     color: '#9C27B0', labelKey: 'badgeQuizMaster',     check: (p)           => p.passedQuizzes.length >= 10 },
-  { id: 'century_club',    icon: 'ribbon',     color: '#25F4EE', labelKey: 'badgeCenturyClub',    check: (p)           => p.completedLessons.length >= 100 },
-  { id: 'explorer',        icon: 'compass',    color: '#4CAF50', labelKey: 'badgeExplorer',       check: (p, courses)  => new Set(courses.filter((c) => p.completedLessons.some((cl) => cl.courseId === c.id)).map((c) => c.category)).size >= 5 },
-  { id: 'course_graduate', icon: 'school',     color: '#FE2C55', labelKey: 'badgeCourseGraduate', check: (p, courses)  => courses.some((c) => c.lessonIds.length > 0 && c.lessonIds.every((lid) => p.completedLessons.some((cl) => cl.lessonId === lid))) },
+  { id: 'first_lesson',    icon: 'star',       color: '#FFD700', labelKey: 'badgeFirstLesson',    reqKey: 'badgeReqFirstLesson',    check: (p)           => p.completedLessons.length >= 1 },
+  { id: 'week_warrior',    icon: 'flame',      color: '#FF5722', labelKey: 'badgeWeekWarrior',    reqKey: 'badgeReqWeekWarrior',    check: (p)           => (p.streak || 0) >= 7 },
+  { id: 'quiz_master',     icon: 'trophy',     color: '#9C27B0', labelKey: 'badgeQuizMaster',     reqKey: 'badgeReqQuizMaster',     check: (p)           => p.passedQuizzes.length >= 10 },
+  { id: 'century_club',    icon: 'ribbon',     color: '#25F4EE', labelKey: 'badgeCenturyClub',    reqKey: 'badgeReqCenturyClub',    check: (p)           => p.completedLessons.length >= 100 },
+  { id: 'explorer',        icon: 'compass',    color: '#4CAF50', labelKey: 'badgeExplorer',       reqKey: 'badgeReqExplorer',       check: (p, courses)  => new Set(courses.filter((c) => p.completedLessons.some((cl) => cl.courseId === c.id)).map((c) => c.category)).size >= 5 },
+  { id: 'course_graduate', icon: 'school',     color: '#FE2C55', labelKey: 'badgeCourseGraduate', reqKey: 'badgeReqCourseGraduate', check: (p, courses)  => courses.some((c) => c.lessonIds.length > 0 && c.lessonIds.every((lid) => p.completedLessons.some((cl) => cl.lessonId === lid))) },
 ];
 
 export const PRESET_AVATARS = [

@@ -32,6 +32,7 @@ import { useTranslation } from '../utils/useTranslation';
 import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, scheduleEnrollmentNotification } from '../services/notificationService';
 import { useToast } from '../context/ToastContext';
 import StreakCelebration from '../components/StreakCelebration';
+import BadgeCelebration from '../components/BadgeCelebration';
 import AppText from '../components/AppText';
 import ShareSheet from '../components/ShareSheet';
 import { lessonLink } from '../utils/shareLinks';
@@ -318,6 +319,7 @@ const ForYouScreen = ({ navigation }) => {
     toggleLike, toggleFavorite, enroll,
     completeLesson, recordQuizPass, recordShare, bumpCommentCount,
     streakMilestone, clearStreakMilestone,
+    newBadges, clearNewBadges,
   } = useCourses();
 
   const { showTabBar } = useTabBar();
@@ -731,6 +733,8 @@ const ForYouScreen = ({ navigation }) => {
         streak={streakMilestone}
         onFinish={clearStreakMilestone}
       />
+
+      <BadgeCelebration badges={newBadges} onFinish={clearNewBadges} />
 
       <ShareSheet
         visible={!!shareTarget}

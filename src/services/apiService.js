@@ -423,8 +423,12 @@ export const unenrollCourse = async (courseId) => {
 };
 
 export const completeLesson = async (lessonId, courseId, durationSeconds) => {
+  // The server awards badges on first completion and returns their keys in
+  // `newBadges` — capture them so the app can celebrate the unlock.
+  let newBadges = [];
   try {
-    await post(`/lessons/${lessonId}/complete`, { course_id: courseId });
+    const res = await post(`/lessons/${lessonId}/complete`, { course_id: courseId });
+    newBadges = (res?.data?.newBadges ?? res?.newBadges ?? []);
   } catch (e) {
     if (e.status !== 409) throw e;
   }
@@ -434,7 +438,8 @@ export const completeLesson = async (lessonId, courseId, durationSeconds) => {
       total_seconds:   durationSeconds,
     });
   } catch { /* best-effort */ }
-  return fetchProgress();
+  const progress = await fetchProgress();
+  return { progress, newBadges };
 };
 
 // 409 (already liked/saved) and 404 (already removed) mean the server is
@@ -492,11 +497,17 @@ export const recordQuizPass = async (quizId, lessonId, score, answers = []) => {
     }
   } catch (_) {}
 
-  // Fire-and-forget server submission with the user's real answers so the
-  // backend grades and records the pass (quiz history, Quiz Master badge).
-  post(`/quizzes/${quizId}/submit`, { answers }).catch(() => {});
+  // Submit the user's real answers so the backend grades, records the pass
+  // (quiz history), and awards the Quiz Master badge. Awaited in try/catch so
+  // we can capture any newly-earned badges — but it must never throw.
+  let newBadges = [];
+  try {
+    const res = await post(`/quizzes/${quizId}/submit`, { answers });
+    newBadges = (res?.data?.newBadges ?? res?.newBadges ?? []);
+  } catch (_) {}
 
-  return fetchProgress();
+  const progress = await fetchProgress();
+  return { progress, newBadges };
 };
 
 export const recordShare = (lessonId) =>
@@ -526,8 +537,12 @@ export const fetchBadges = async () => {
   try {
     const data = await get('/progress/me/badges');
     const list = data.data ?? data.badges ?? data;
+    // The endpoint returns ALL badge defs as { key, earned, earned_at, ... }.
+    // Keep only earned ones and map the key (NOT badge_key) to the app's id.
     return Array.isArray(list)
-      ? list.map((b) => ({ id: b.badge_key ?? b.id, earnedAt: b.earned_at ?? b.earnedAt }))
+      ? list
+          .filter((b) => b.earned ?? b.earned_at)
+          .map((b) => ({ id: b.key ?? b.badge_key ?? b.id, earnedAt: b.earned_at ?? b.earnedAt }))
       : [];
   } catch {
     return [];

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableWithoutFeedback, Animated, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, Animated, ActivityIndicator } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -52,8 +52,9 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
     }).start();
   };
 
+  // Always toggleable — gating on `active` could permanently swallow taps if a
+  // parent ever left its transition flag false (play/pause felt "broken")
   const handleTap = () => {
-    if (!active) return;
     if (!userPaused) { setUserPaused(true);  flash('pause'); }
     else             { setUserPaused(false); flash('play');  }
   };
@@ -61,47 +62,50 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
   if (!videoUri) return <View style={styles.container} />;
 
   return (
-    <TouchableWithoutFeedback onPress={handleTap}>
-      <View style={styles.container}>
-        {/* contain = full frame always visible (no horizontal cropping),
-            matching the object-fit behavior of image lessons */}
-        <VideoView
-          player={player}
-          style={styles.fill}
-          contentFit="contain"
-          nativeControls={false}
-          fullscreenOptions={{ isFullscreenButtonHidden: true }}
-        />
+    <View style={styles.container}>
+      {/* contain = full frame always visible (no horizontal cropping),
+          matching the object-fit behavior of image lessons */}
+      <VideoView
+        player={player}
+        style={styles.fill}
+        contentFit="contain"
+        nativeControls={false}
+        fullscreenOptions={{ isFullscreenButtonHidden: true }}
+      />
 
-        {/* Spinner while buffering */}
-        {loading && (
-          <View style={styles.loadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="large" color="rgba(255,255,255,0.8)" />
+      {/* Transparent tap layer ON TOP of the native video surface. The native
+          player view swallows touches on some platforms, so a Touchable
+          wrapping it never fires — an overlay receives taps reliably. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleTap} />
+
+      {/* Spinner while buffering */}
+      {loading && (
+        <View style={styles.loadingOverlay} pointerEvents="none">
+          <ActivityIndicator size="large" color="rgba(255,255,255,0.8)" />
+        </View>
+      )}
+
+      {/* Persistent play icon while paused — makes the paused state obvious */}
+      {userPaused && !loading && (
+        <View style={styles.iconOverlay} pointerEvents="none">
+          <View style={styles.iconCircle}>
+            <Ionicons name="play" size={44} color="#fff" />
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Persistent play icon while paused — makes the paused state obvious */}
-        {userPaused && !loading && (
-          <View style={styles.iconOverlay} pointerEvents="none">
-            <View style={styles.iconCircle}>
-              <Ionicons name="play" size={44} color="#fff" />
-            </View>
+      {/* Tap-to-pause/play flash icon */}
+      {!userPaused && (
+        <Animated.View
+          style={[styles.iconOverlay, { opacity: iconOpacity }]}
+          pointerEvents="none"
+        >
+          <View style={styles.iconCircle}>
+            <Ionicons name={flashedIcon} size={44} color="#fff" />
           </View>
-        )}
-
-        {/* Tap-to-pause/play flash icon */}
-        {!userPaused && (
-          <Animated.View
-            style={[styles.iconOverlay, { opacity: iconOpacity }]}
-            pointerEvents="none"
-          >
-            <View style={styles.iconCircle}>
-              <Ionicons name={flashedIcon} size={44} color="#fff" />
-            </View>
-          </Animated.View>
-        )}
-      </View>
-    </TouchableWithoutFeedback>
+        </Animated.View>
+      )}
+    </View>
   );
 };
 

@@ -10,14 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
+import { COLORS, SIZES } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
-import { searchCourses as searchCoursesApi, fetchCategories } from '../services/apiService';
-
-// Dashboard-authored categories may carry an icon name that isn't a valid
-// Ionicons glyph (e.g. "brain"); fall back so the chip still renders.
-const safeIcon = (name) =>
-  name && Ionicons.glyphMap?.[name] ? name : 'pricetags-outline';
+import { searchCourses as searchCoursesApi } from '../services/apiService';
+import { safeIcon } from '../utils/categories';
 import { truncateText, formatLargeNumber } from '../utils/helpers';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
@@ -48,7 +44,7 @@ const SearchResultCard = ({ course, org, onPress }) => {
 };
 
 const SearchScreen = ({ navigation }) => {
-  const { visibleCourses: courses, organizations, isLoading } = useCourses();
+  const { visibleCourses: courses, organizations, isLoading, categories } = useCourses();
   const { hPad } = useResponsive();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -65,19 +61,8 @@ const SearchScreen = ({ navigation }) => {
 
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  // Seed with the bundled list so chips show instantly; replace with the
-  // DB-driven list once the API responds.
-  const [categories, setCategories] = useState(CATEGORIES);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchCategories()
-      .then((cats) => {
-        if (!cancelled && cats.length) setCategories(cats);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  // Category chips come from CourseContext (DB-driven, seeded with the bundled
+  // list so they render instantly).
 
   const getOrg = useCallback(
     (orgId) => organizations.find((o) => o.id === orgId),

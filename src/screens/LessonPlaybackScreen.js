@@ -35,6 +35,7 @@ import { scheduleLessonCompleteNotification, scheduleQuizPassNotification, sched
 import { useToast } from '../context/ToastContext';
 import AppText from '../components/AppText';
 import ShareSheet from '../components/ShareSheet';
+import BadgeCelebration from '../components/BadgeCelebration';
 import { lessonLink } from '../utils/shareLinks';
 import { useTabBar } from '../context/TabBarContext';
 
@@ -210,6 +211,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
     courses, isLiked, isFavorited, isEnrolled, isQuizPassed,
     getLessonsForCourse, toggleLike, toggleFavorite,
     enroll, completeLesson, recordQuizPass, recordShare, bumpCommentCount,
+    newBadges, clearNewBadges,
   } = useCourses();
 
   const course = useMemo(() => courses.find((c) => c.id === courseId), [courses, courseId]);
@@ -543,6 +545,8 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
         url={lesson ? lessonLink(lesson.id, course?.id) : ''}
         onShared={() => lesson && recordShare(lesson.id)}
       />
+
+      <BadgeCelebration badges={newBadges} onFinish={clearNewBadges} />
     </View>
   );
 };

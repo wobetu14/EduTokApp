@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, CATEGORIES, DIFFICULTY, COURSE_VISIBILITY } from '../utils/constants';
+import { COLORS, SIZES, DIFFICULTY, COURSE_VISIBILITY } from '../utils/constants';
 import LessonCard from '../components/LessonCard';
 import ProgressBar from '../components/ProgressBar';
 import { useCourses } from '../context/CourseContext';
@@ -42,6 +42,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
     getCourseProgress,
     getLessonsForCourse,
     getCertificate,
+    getCategory,
     enroll,
   } = useCourses();
 
@@ -77,7 +78,7 @@ const CourseProfileScreen = ({ route, navigation }) => {
   const lessons = useMemo(() => getLessonsForCourse(courseId), [getLessonsForCourse, courseId]);
   const enrolled = isEnrolled(courseId);
   const progress = getCourseProgress(courseId);
-  const catInfo = CATEGORIES.find((c) => c.id === course?.category);
+  const catInfo = getCategory(course?.category);
   const diff = DIFFICULTY[course?.difficulty] || DIFFICULTY.Beginner;
 
   if (isLoading || !course) {

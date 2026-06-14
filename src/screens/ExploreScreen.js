@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, CATEGORIES } from '../utils/constants';
+import { COLORS, SIZES } from '../utils/constants';
 import CourseCard from '../components/CourseCard';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
@@ -35,7 +35,7 @@ const OrgCard = ({ org, courseCount, onPress }) => {
 };
 
 const ExploreScreen = ({ navigation }) => {
-  const { isLoading, visibleCourses: courses, organizations } = useCourses();
+  const { isLoading, visibleCourses: courses, organizations, getCategory } = useCourses();
   const { hPad, hCardW, isTablet } = useResponsive();
   const { t } = useTranslation();
   const [view, setView] = useState('courses');
@@ -67,7 +67,7 @@ const ExploreScreen = ({ navigation }) => {
       byCategory[c.category].push(c);
     });
     return Object.entries(byCategory).map(([cat, data]) => {
-      const catInfo = CATEGORIES.find((c) => c.id === cat);
+      const catInfo = getCategory(cat);
       return {
         title: catInfo?.label || cat,
         icon: catInfo?.icon || 'book',
@@ -76,7 +76,7 @@ const ExploreScreen = ({ navigation }) => {
         key: cat,
       };
     });
-  }, [courses]);
+  }, [courses, getCategory]);
 
   return (
     <View style={styles.container}>

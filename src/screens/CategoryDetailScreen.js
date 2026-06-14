@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES, CATEGORIES, TAB_BAR_HEIGHT } from '../utils/constants';
+import { COLORS, SIZES, TAB_BAR_HEIGHT } from '../utils/constants';
 import { useCourses } from '../context/CourseContext';
 import { useResponsive } from '../utils/responsive';
 import { useTranslation } from '../utils/useTranslation';
@@ -19,7 +19,7 @@ import { formatLargeNumber } from '../utils/helpers';
 
 const CategoryDetailScreen = ({ route, navigation }) => {
   const { categoryId } = route.params;
-  const { visibleCourses: courses, organizations, isLoading } = useCourses();
+  const { visibleCourses: courses, organizations, isLoading, getCategory } = useCourses();
   const { hPad, gridCols, lessonCardW } = useResponsive();
   const { t } = useTranslation();
   const { hideTabBar, showTabBar } = useTabBar();
@@ -27,8 +27,8 @@ const CategoryDetailScreen = ({ route, navigation }) => {
   const lastScrollY = useRef(0);
 
   const catInfo = useMemo(
-    () => CATEGORIES.find((c) => c.id === categoryId),
-    [categoryId]
+    () => getCategory(categoryId),
+    [categoryId, getCategory]
   );
 
   const filtered = useMemo(

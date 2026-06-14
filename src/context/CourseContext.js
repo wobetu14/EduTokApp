@@ -10,7 +10,8 @@ import React, {
 } from 'react';
 import * as api from '../services/apiService';
 import { useAuth } from './AuthContext';
-import { BADGE_DEFS } from '../utils/constants';
+import { BADGE_DEFS, CATEGORIES } from '../utils/constants';
+import { resolveCategory } from '../utils/categories';
 
 const CourseContext = createContext(null);
 
@@ -31,6 +32,9 @@ const initialState = {
   },
   badges: [],
   certificates: [],
+  // Seed with the bundled list so category labels/icons resolve instantly;
+  // replaced with the DB-driven list once the API responds.
+  categories: CATEGORIES,
   streakMilestone: null,
   newBadges: [],
   isLoading: true,
@@ -49,6 +53,7 @@ const reducer = (state, action) => {
         progress: action.progress,
         badges: action.badges || [],
         certificates: action.certificates || [],
+        categories: action.categories?.length ? action.categories : CATEGORIES,
         isLoading: false,
         loadError: false,
       };
@@ -111,6 +116,11 @@ const reducer = (state, action) => {
       };
     case 'SET_BADGES':
       return { ...state, badges: action.badges };
+    case 'MERGE_BADGES': {
+      const existing = new Set(state.badges.map((b) => b.id));
+      const additions = action.badges.filter((b) => !existing.has(b.id));
+      return additions.length ? { ...state, badges: [...state.badges, ...additions] } : state;
+    }
     case 'SET_CERTIFICATES':
       return { ...state, certificates: action.certificates };
     case 'SET_STREAK_MILESTONE':
@@ -143,13 +153,14 @@ export const CourseProvider = ({ children }) => {
       try {
         dispatch({ type: 'LOADING' });
         // Phase 1: parallel fetch of list data
-        const [coursesRaw, organizations, instructors, progress, badges, certificates] = await Promise.all([
+        const [coursesRaw, organizations, instructors, progress, badges, certificates, categories] = await Promise.all([
           api.fetchCourses(),
           api.fetchOrganizations(),
           api.fetchInstructors(),
           api.fetchProgress(),
           api.fetchBadges(),
           api.fetchCertificates(),
+          api.fetchCategories().catch(() => []),
         ]);
 
         // Phase 2: enrich each course with its full detail (includes nested lessons)
@@ -189,6 +200,7 @@ export const CourseProvider = ({ children }) => {
           progress: progressWithLikes,
           badges,
           certificates,
+          categories,
         });
       } catch (e) {
         console.error('CourseContext load failed', e);
@@ -202,19 +214,18 @@ export const CourseProvider = ({ children }) => {
 
   const reload = useCallback(() => setLoadAttempt((n) => n + 1), []);
 
-  const checkAndAwardBadges = useCallback(async (progress) => {
-    const courses = coursesRef.current;
-    const earned = await api.fetchBadges();
-    const earnedIds = new Set(earned.map((b) => b.id));
-    const newOnes = BADGE_DEFS.filter(
-      (def) => !earnedIds.has(def.id) && def.check(progress, courses)
-    ).map((def) => ({ id: def.id, earnedAt: new Date().toISOString() }));
-    if (newOnes.length > 0) {
-      const updated = [...earned, ...newOnes];
-      await api.saveBadges(updated);
-      dispatch({ type: 'SET_BADGES', badges: updated });
-      dispatch({ type: 'SET_NEW_BADGES', badges: newOnes });
-    }
+  // The server is the source of truth for badge awarding and returns the keys
+  // of any newly-earned badges. Merge them into state (so the Badges tab
+  // updates live) and flag them for the celebration overlay.
+  const surfaceNewBadges = useCallback((keys) => {
+    if (!keys || keys.length === 0) return;
+    const now = new Date().toISOString();
+    const newOnes = keys
+      .filter((k) => BADGE_DEFS.some((def) => def.id === k))
+      .map((k) => ({ id: k, earnedAt: now }));
+    if (newOnes.length === 0) return;
+    dispatch({ type: 'MERGE_BADGES', badges: newOnes });
+    dispatch({ type: 'SET_NEW_BADGES', badges: newOnes });
   }, []);
 
   // Optimistic: flip enrolled state instantly, revert on server failure
@@ -230,18 +241,18 @@ export const CourseProvider = ({ children }) => {
 
   const completeLesson = useCallback(async (lessonId, courseId, durationSeconds) => {
     const prevStreak = state.progress.streak || 0;
-    const progress = await api.completeLesson(lessonId, courseId, durationSeconds);
+    const { progress, newBadges } = await api.completeLesson(lessonId, courseId, durationSeconds);
     dispatch({ type: 'SET_PROGRESS', progress });
     const newStreak = progress.streak || 0;
     if (newStreak > prevStreak && [3, 7, 14, 30].includes(newStreak)) {
       dispatch({ type: 'SET_STREAK_MILESTONE', value: newStreak });
     }
-    checkAndAwardBadges(progress);
+    surfaceNewBadges(newBadges);
     // Server issues a certificate when the last lesson of a course completes
     api.fetchCertificates().then((certificates) =>
       dispatch({ type: 'SET_CERTIFICATES', certificates })
     );
-  }, [state.progress.streak, checkAndAwardBadges]);
+  }, [state.progress.streak, surfaceNewBadges]);
 
   // Optimistic: flip local state instantly, revert by flipping back on failure
   const toggleLike = useCallback(async (lessonId) => {
@@ -271,10 +282,10 @@ export const CourseProvider = ({ children }) => {
   }, []);
 
   const recordQuizPass = useCallback(async (quizId, lessonId, score, answers = []) => {
-    const progress = await api.recordQuizPass(quizId, lessonId, score, answers);
+    const { progress, newBadges } = await api.recordQuizPass(quizId, lessonId, score, answers);
     dispatch({ type: 'SET_PROGRESS', progress });
-    checkAndAwardBadges(progress);
-  }, [checkAndAwardBadges]);
+    surfaceNewBadges(newBadges);
+  }, [surfaceNewBadges]);
 
   const recordShare = useCallback((lessonId) => {
     api.recordShare(lessonId);
@@ -356,6 +367,16 @@ export const CourseProvider = ({ children }) => {
     [state.certificates]
   );
 
+  // Resolve a stored course/cert `category` value (which may be an id OR a
+  // label, in any case) against the DB-driven category list. Returns the
+  // matching { id, label, icon, color } or null. Replaces ad-hoc
+  // `CATEGORIES.find(c => c.id === value)` lookups, which only matched ids
+  // from the bundled constant.
+  const getCategory = useCallback(
+    (value) => resolveCategory(value, state.categories),
+    [state.categories]
+  );
+
   // Memoized so its identity only changes when courses actually change.
   // A fresh array on every provider render (e.g. after a like/save progress
   // update) would invalidate ForYouScreen's feed useMemo and reshuffle the
@@ -410,6 +431,7 @@ export const CourseProvider = ({ children }) => {
         getLessonsForCourse,
         getOrganization,
         getCertificate,
+        getCategory,
         getCoursesForOrg,
         getPersonalizedCourses,
       }}

@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SIZES, CATEGORIES, BADGE_DEFS, PRESET_AVATARS, AGE_RANGES, GENDERS } from '../utils/constants';
+import { COLORS, SIZES, BADGE_DEFS, PRESET_AVATARS, AGE_RANGES, GENDERS } from '../utils/constants';
 import { uploadAvatar } from '../services/apiService';
 import ProgressBar from '../components/ProgressBar';
 import { useAuth } from '../context/AuthContext';
@@ -68,6 +68,7 @@ const ProfileScreen = ({ navigation }) => {
     getCourseProgress,
     getLessonsForCourse,
     getCertificate,
+    getCategory,
   } = useCourses();
 
   const handleViewCertificate = (course) => {
@@ -400,7 +401,7 @@ const ProfileScreen = ({ navigation }) => {
           ) : (
             completedCourses.map((course) => {
               const org = organizations.find((o) => o.id === course.organizationId);
-              const catInfo = CATEGORIES.find((c) => c.id === course.category);
+              const catInfo = getCategory(course.category);
               const issuedAt = course.lessonIds
                 .map((lid) => progress.completedLessons.find((cl) => cl.lessonId === lid)?.completedAt)
                 .filter(Boolean).sort().pop() || new Date().toISOString();
@@ -501,8 +502,8 @@ const ProfileScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={def.id}
                   style={[styles.badgeCard, !isEarned && styles.badgeCardLocked]}
-                  onPress={() => isEarned && setSelectedBadge({ def, earned })}
-                  activeOpacity={isEarned ? 0.75 : 1}
+                  onPress={() => setSelectedBadge({ def, earned })}
+                  activeOpacity={0.75}
                 >
                   <View style={[styles.badgeIconWrap, { backgroundColor: def.color + (isEarned ? '33' : '11') }]}>
                     <Ionicons name={def.icon} size={28} color={isEarned ? def.color : COLORS.textMuted} />
@@ -860,13 +861,29 @@ const ProfileScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.badgeModalOverlay} activeOpacity={1} onPress={() => setSelectedBadge(null)}>
           {selectedBadge && (
             <View style={styles.badgeDetail}>
-              <View style={[styles.badgeDetailIcon, { backgroundColor: selectedBadge.def.color + '33' }]}>
-                <Ionicons name={selectedBadge.def.icon} size={48} color={selectedBadge.def.color} />
+              <View style={[styles.badgeDetailIcon, { backgroundColor: selectedBadge.def.color + (selectedBadge.earned ? '33' : '14') }]}>
+                <Ionicons
+                  name={selectedBadge.def.icon}
+                  size={48}
+                  color={selectedBadge.earned ? selectedBadge.def.color : COLORS.textMuted}
+                />
               </View>
               <AppText style={styles.badgeDetailLabel}>{t(selectedBadge.def.labelKey)}</AppText>
-              <AppText style={styles.badgeDetailDate}>
-                {t('earnedOn')} {new Date(selectedBadge.earned.earnedAt).toLocaleDateString()}
-              </AppText>
+              {selectedBadge.earned ? (
+                <AppText style={styles.badgeDetailDate}>
+                  {t('earnedOn')} {new Date(selectedBadge.earned.earnedAt).toLocaleDateString()}
+                </AppText>
+              ) : (
+                <>
+                  <View style={styles.badgeLockedPill}>
+                    <Ionicons name="lock-closed" size={11} color={COLORS.textMuted} />
+                    <AppText style={styles.badgeLockedPillText}>{t('locked')}</AppText>
+                  </View>
+                  <AppText style={styles.badgeReqText}>
+                    {t('howToEarn')}: {t(selectedBadge.def.reqKey)}
+                  </AppText>
+                </>
+              )}
             </View>
           )}
         </TouchableOpacity>
@@ -1135,6 +1152,13 @@ const styles = StyleSheet.create({
   badgeDetailIcon: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   badgeDetailLabel: { color: COLORS.text, fontSize: SIZES.lg, fontWeight: '800', textAlign: 'center' },
   badgeDetailDate: { color: COLORS.textMuted, fontSize: SIZES.xs },
+  badgeLockedPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: COLORS.cardAlt, borderRadius: SIZES.borderRadiusFull,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  badgeLockedPillText: { color: COLORS.textMuted, fontSize: SIZES.xs, fontWeight: '700' },
+  badgeReqText: { color: COLORS.textSecondary, fontSize: SIZES.sm, textAlign: 'center', lineHeight: 20 },
   // Analytics
   analyticsTitle: { color: COLORS.text, fontSize: SIZES.sm, fontWeight: '700', marginBottom: 10 },
   chartContainer: { flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6, marginBottom: 8 },
