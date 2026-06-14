@@ -75,8 +75,8 @@ export const STORAGE_KEYS = {
   comments: '@edutok_comments',
   badges: '@edutok_badges',
   a11y: '@edutok_a11y',
-  accessToken: '@edutok_access_token',
-  refreshToken: '@edutok_refresh_token',
+  // Auth tokens are NOT here — they live in the OS keystore via SecureStore
+  // (see src/services/httpClient.js), not AsyncStorage.
 };
 
 export const BADGE_DEFS = [

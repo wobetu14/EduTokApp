@@ -1,8 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { BASE_URL } from '../utils/apiConfig';
 
-const ACCESS_KEY  = '@edutok_access_token';
-const REFRESH_KEY = '@edutok_refresh_token';
+// Auth tokens are kept in the OS keystore (Keychain / Android Keystore) via
+// SecureStore so they are encrypted at rest (CWE-922). SecureStore has no web
+// implementation, so on web we fall back to AsyncStorage. Legacy keys (the '@'
+// prefix used before this change, and the AsyncStorage location) are migrated
+// transparently on first read so existing sessions survive the upgrade.
+const SECURE = Platform.OS !== 'web';
+
+// SecureStore keys allow only [A-Za-z0-9._-] — no '@'.
+const ACCESS_KEY  = 'edutok_access_token';
+const REFRESH_KEY = 'edutok_refresh_token';
+// Pre-SecureStore AsyncStorage locations (kept for one-time migration).
+const LEGACY_ACCESS_KEY  = '@edutok_access_token';
+const LEGACY_REFRESH_KEY = '@edutok_refresh_token';
 
 // Abort any request that hasn't completed within this window so dead
 // connections surface as a clear network error instead of hanging forever.
@@ -27,18 +40,47 @@ const fetchWithTimeout = async (url, options = {}) => {
 // --- Token storage ---
 
 export const saveTokens = async (accessToken, refreshToken) => {
-  await AsyncStorage.multiSet([
-    [ACCESS_KEY,  accessToken],
-    [REFRESH_KEY, refreshToken],
-  ]);
+  if (SECURE) {
+    await Promise.all([
+      SecureStore.setItemAsync(ACCESS_KEY,  accessToken),
+      SecureStore.setItemAsync(REFRESH_KEY, refreshToken),
+    ]);
+  } else {
+    await AsyncStorage.multiSet([
+      [LEGACY_ACCESS_KEY,  accessToken],
+      [LEGACY_REFRESH_KEY, refreshToken],
+    ]);
+  }
 };
 
 export const clearTokens = async () => {
-  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY]);
+  if (SECURE) {
+    await Promise.all([
+      SecureStore.deleteItemAsync(ACCESS_KEY),
+      SecureStore.deleteItemAsync(REFRESH_KEY),
+    ]);
+  }
+  // Always sweep the legacy AsyncStorage copies too (migration cleanup / web).
+  await AsyncStorage.multiRemove([LEGACY_ACCESS_KEY, LEGACY_REFRESH_KEY]).catch(() => {});
 };
 
-const getAccessToken  = () => AsyncStorage.getItem(ACCESS_KEY);
-const getRefreshToken = () => AsyncStorage.getItem(REFRESH_KEY);
+// Read from SecureStore, transparently migrating a token written by a
+// pre-SecureStore build (AsyncStorage) on first access.
+const readToken = async (secureKey, legacyKey) => {
+  if (!SECURE) return AsyncStorage.getItem(legacyKey);
+  const current = await SecureStore.getItemAsync(secureKey);
+  if (current != null) return current;
+  const legacy = await AsyncStorage.getItem(legacyKey).catch(() => null);
+  if (legacy != null) {
+    await SecureStore.setItemAsync(secureKey, legacy).catch(() => {});
+    await AsyncStorage.removeItem(legacyKey).catch(() => {});
+    return legacy;
+  }
+  return null;
+};
+
+export const getAccessToken  = () => readToken(ACCESS_KEY,  LEGACY_ACCESS_KEY);
+const getRefreshToken        = () => readToken(REFRESH_KEY, LEGACY_REFRESH_KEY);
 
 // --- Session-expired callback (avoids circular dependency with AuthContext) ---
 

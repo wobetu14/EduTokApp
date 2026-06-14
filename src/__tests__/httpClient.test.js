@@ -1,7 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Tokens now live in SecureStore (Keychain/Keystore). Back it with an in-memory
+// store so the storage/auth-header/refresh tests exercise the real code path.
+const mockSecureStore = new Map();
+jest.mock('expo-secure-store', () => ({
+  getItemAsync:    jest.fn((k) => Promise.resolve(mockSecureStore.has(k) ? mockSecureStore.get(k) : null)),
+  setItemAsync:    jest.fn((k, v) => { mockSecureStore.set(k, v); return Promise.resolve(); }),
+  deleteItemAsync: jest.fn((k) => { mockSecureStore.delete(k); return Promise.resolve(); }),
+}));
+
 import {
   saveTokens,
   clearTokens,
+  getAccessToken,
   setSessionExpiredHandler,
   request,
   get,
@@ -13,6 +24,7 @@ import {
 beforeEach(() => {
   jest.clearAllMocks();
   AsyncStorage.clear();
+  mockSecureStore.clear();
   setSessionExpiredHandler(null);
 });
 
@@ -28,17 +40,27 @@ const mockFetch = (status, body) => {
 // --- Token storage ---
 
 describe('saveTokens / clearTokens', () => {
-  it('saves access and refresh tokens', async () => {
+  it('saves access and refresh tokens to SecureStore', async () => {
     await saveTokens('access-abc', 'refresh-xyz');
-    expect(await AsyncStorage.getItem('@edutok_access_token')).toBe('access-abc');
-    expect(await AsyncStorage.getItem('@edutok_refresh_token')).toBe('refresh-xyz');
+    expect(mockSecureStore.get('edutok_access_token')).toBe('access-abc');
+    expect(mockSecureStore.get('edutok_refresh_token')).toBe('refresh-xyz');
+    expect(await getAccessToken()).toBe('access-abc');
   });
 
   it('clears both tokens', async () => {
     await saveTokens('access-abc', 'refresh-xyz');
     await clearTokens();
+    expect(mockSecureStore.has('edutok_access_token')).toBe(false);
+    expect(mockSecureStore.has('edutok_refresh_token')).toBe(false);
+    expect(await getAccessToken()).toBeNull();
+  });
+
+  it('migrates a legacy AsyncStorage token into SecureStore on read', async () => {
+    await AsyncStorage.setItem('@edutok_access_token', 'legacy-access');
+    // First read pulls from AsyncStorage, persists to SecureStore, and clears legacy.
+    expect(await getAccessToken()).toBe('legacy-access');
+    expect(mockSecureStore.get('edutok_access_token')).toBe('legacy-access');
     expect(await AsyncStorage.getItem('@edutok_access_token')).toBeNull();
-    expect(await AsyncStorage.getItem('@edutok_refresh_token')).toBeNull();
   });
 });
 
@@ -90,7 +112,7 @@ describe('request — 401 token refresh', () => {
     expect(result).toEqual({ ok: true });
     expect(global.fetch).toHaveBeenCalledTimes(3);
     // New token saved
-    expect(await AsyncStorage.getItem('@edutok_access_token')).toBe('new-access');
+    expect(await getAccessToken()).toBe('new-access');
   });
 
   it('clears tokens and calls session-expired handler when refresh fails', async () => {
@@ -104,7 +126,7 @@ describe('request — 401 token refresh', () => {
 
     await expect(request('GET', '/resource')).rejects.toThrow('Session expired');
     expect(onExpired).toHaveBeenCalledTimes(1);
-    expect(await AsyncStorage.getItem('@edutok_access_token')).toBeNull();
+    expect(await getAccessToken()).toBeNull();
   });
 
   it('does not retry more than once (retry: false stops the loop)', async () => {

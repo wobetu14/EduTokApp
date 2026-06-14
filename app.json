@@ -35,10 +35,19 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "edutok.app" },
-            { "scheme": "https", "host": "www.edutok.app" }
+            {
+              "scheme": "https",
+              "host": "edutok.app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.edutok.app"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -58,7 +67,8 @@
           "photosPermission": "EduTok needs access to your photos so you can set a profile picture."
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ]
   }
 }

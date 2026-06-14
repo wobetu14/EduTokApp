@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as storage from '../services/storageService';
 import * as api from '../services/apiService';
-import { clearTokens, setSessionExpiredHandler } from '../services/httpClient';
+import { clearTokens, getAccessToken, setSessionExpiredHandler } from '../services/httpClient';
 import { setLanguage } from '../utils/i18n';
 import { scheduleDailyReminder, getPermissionStatus } from '../services/notificationService';
 
@@ -52,7 +51,7 @@ export const AuthProvider = ({ children }) => {
     setSessionExpiredHandler(() => dispatch({ type: 'SIGN_OUT' }));
 
     const restore = async () => {
-      const token = await AsyncStorage.getItem('@edutok_access_token').catch(() => null);
+      const token = await getAccessToken().catch(() => null);
       const hasOnboarded = await storage.getHasOnboarded().catch(() => false);
       if (!token) {
         dispatch({ type: 'RESTORE', user: null, hasOnboarded });
