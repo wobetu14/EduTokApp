@@ -105,6 +105,11 @@ const styles = StyleSheet.create({
   },
   pillActive: {
     backgroundColor: COLORS.primary + '1E',
+    // Slightly-rounded square (vs. the softer base pill) so the active tab
+    // reads as a distinct, gently-cornered badge.
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.primary + '55',
   },
   tabLabel: {
     marginTop: 2,
