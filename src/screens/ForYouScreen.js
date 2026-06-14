@@ -22,7 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import VideoPlayer from '../components/VideoPlayer';
-import { COLORS, SIZES } from '../utils/constants';
+import { COLORS, SIZES, TAB_BAR_HEIGHT } from '../utils/constants';
 import { formatDuration, shuffle, formatLargeNumber } from '../utils/helpers';
 import QuizModal from '../components/QuizModal';
 import CommentThread from '../components/CommentThread';
@@ -156,7 +156,7 @@ const Slide = ({
   slideWidth, slideBodyH, insetsTop, insetsBottom,
   navigation, t, showShare,
   enrolled, liked, saved,
-  videoActive, videoProgress, onVideoProgress,
+  videoActive, onVideoProgress,
   onEnroll, onLike, onSave, onComment, onShare, onTapNext,
 }) => {
   const { lesson, course } = item;
@@ -190,12 +190,6 @@ const Slide = ({
         pointerEvents="none"
       />
 
-      {/* Video watch progress bar */}
-      {isActive && lesson.type === 'video' && (
-        <View style={styles.progressTrack} pointerEvents="none">
-          <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
-        </View>
-      )}
 
       {/* Feed position counter (top-right) */}
       <View style={[styles.counter, { top: insetsTop + 10 }]}>
@@ -339,7 +333,7 @@ const ForYouScreen = ({ navigation }) => {
   const slideWidth = isWide ? Math.min(W, 430) : W;
 
   // tab bar: paddingTop(10) + pill(40) + paddingBottom(6) = 56 base + device inset
-  const tabBarH = 56 + insets.bottom;
+  const tabBarH = TAB_BAR_HEIGHT + insets.bottom;
   const [slideH, setSlideH] = useState(H);
   const slideBodyH = slideH - tabBarH;
   // Hide Share when screen is too short to fit it comfortably
@@ -666,7 +660,6 @@ const ForYouScreen = ({ navigation }) => {
           liked={isLiked(item.lesson.id)}
           saved={isFavorited(item.lesson.id)}
           videoActive={isActive && videoActive && isFocused}
-          videoProgress={isActive ? videoProgress : 0}
           onVideoProgress={isActive ? setVideoProgress : undefined}
           onEnroll={() => handleEnroll(item.course)}
           onLike={() => handleLike(item.lesson)}
@@ -701,6 +694,15 @@ const ForYouScreen = ({ navigation }) => {
             {len > 1 && renderStackSlide(nextIndex, 'next')}
           </Animated.View>
         </View>
+
+        {/* Video watch progress bar — fixed strip just above the tab bar so it's
+            always visible and never lost at the tab-bar seam or hidden behind
+            the swiping stack. */}
+        {lesson?.type === 'video' && (
+          <View style={[styles.progressTrack, { bottom: tabBarH }]} pointerEvents="none">
+            <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
+          </View>
+        )}
       </View>
 
       {/* Quiz modal */}

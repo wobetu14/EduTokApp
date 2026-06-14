@@ -156,4 +156,8 @@ export const COURSE_VISIBILITY = {
   private:  { label: 'Private',  icon: 'lock-closed-outline', color: '#AAAAAA' },
 };
 
-export const TAB_BAR_HEIGHT = 62;
+// Height of the bottom tab bar ABOVE the safe-area inset (icon pill + label).
+// The bar is pinned to exactly this height (+ inset) in TabNavigator, and every
+// screen offsets its bottom content by the same value, so nothing can hide
+// behind the bar. Keep in sync if the pill/label sizing changes.
+export const TAB_BAR_HEIGHT = 64;

@@ -11,7 +11,7 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
 
   const player = useVideoPlayer(videoUri ?? null, (p) => {
     p.loop                   = true;
-    p.timeUpdateEventInterval = 1; // emit timeUpdate every 1 s
+    p.timeUpdateEventInterval = 0.25; // emit timeUpdate ~4×/s for a smooth bar
     if (active) p.play();
   });
 
@@ -33,12 +33,18 @@ const VideoPlayer = ({ videoUri, active, onProgress }) => {
     return () => sub.remove();
   }, [player]);
 
-  // Progress: report 0–1 fraction via onProgress
+  // Progress: report a clamped 0–1 fraction via onProgress. The timeUpdate
+  // payload carries `duration`, which is reliable; reading player.duration
+  // mid-event can still be NaN/0 before the source is ready (which silently
+  // froze the progress bar). Fall back to the property only if the payload
+  // duration is missing.
   useEffect(() => {
     if (!player) return;
-    const sub = player.addListener('timeUpdate', ({ currentTime }) => {
-      if (player.duration > 0) {
-        onProgress?.(currentTime / player.duration);
+    const sub = player.addListener('timeUpdate', ({ currentTime, duration }) => {
+      const total = duration > 0 ? duration : player.duration;
+      if (total > 0) {
+        const frac = Math.min(1, Math.max(0, currentTime / total));
+        onProgress?.(frac);
       }
     });
     return () => sub.remove();

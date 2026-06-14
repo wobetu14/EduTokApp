@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import VideoPlayer from '../components/VideoPlayer';
-import { COLORS, SIZES } from '../utils/constants';
+import { COLORS, SIZES, TAB_BAR_HEIGHT } from '../utils/constants';
 import { formatDuration } from '../utils/helpers';
 import EngagementButtons from '../components/EngagementButtons';
 import QuizModal from '../components/QuizModal';
@@ -115,7 +115,7 @@ const LessonSlide = ({
   lesson, active, isLiked, isFavorited, isEnrolled,
   onLike, onFavorite, onComment, onShare, onEnroll, onOpenCourse,
   commentCount, courseTitle, lessonIndex, totalLessons,
-  videoProgress, onVideoProgress,
+  onVideoProgress,
   showShare, insetBottom, slideWidth, slideHeight, courseThumbnail,
 }) => {
   const { t } = useTranslation();
@@ -137,13 +137,6 @@ const LessonSlide = ({
         style={styles.bottomOverlay}
         pointerEvents="none"
       />
-
-      {/* Video watch progress bar */}
-      {lesson.type === 'video' && (
-        <View style={styles.progressTrack} pointerEvents="none">
-          <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
-        </View>
-      )}
 
       {/* Bottom-left info */}
       <View style={[styles.bottomLeft, { bottom: insetBottom + 24 }]}>
@@ -254,7 +247,7 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
   }, [navigation, showTabBar]);
 
   // tab bar: paddingTop(10) + pill(40) + paddingBottom(6) = 56 base + device inset
-  const tabBarH = 56 + insets.bottom;
+  const tabBarH = TAB_BAR_HEIGHT + insets.bottom;
   const slideBodyH = slideH - tabBarH;
 
   // Hide Share when screen is too short to fit it comfortably
@@ -484,7 +477,6 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
             courseTitle={course?.title || ''}
             lessonIndex={currentIndex}
             totalLessons={lessons.length}
-            videoProgress={videoProgress}
             onVideoProgress={setVideoProgress}
             showShare={showShare}
             insetBottom={insets.bottom}
@@ -494,11 +486,11 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
           />
         </Animated.View>
 
-        {/* Swipe hint — positioned above home indicator, outside animated view */}
+        {/* Swipe hint — sits ABOVE the watch-progress bar, clear of the tab bar */}
         {currentIndex < lessons.length - 1 && (
           lesson.type === 'text' ? (
             <TouchableOpacity
-              style={[styles.swipeHint, { bottom: tabBarH + 12 }]}
+              style={[styles.swipeHint, { bottom: tabBarH + 26 }]}
               onPress={tryGoNext}
               activeOpacity={0.7}
             >
@@ -506,11 +498,19 @@ const LessonPlaybackScreen = ({ route, navigation }) => {
               <AppText style={[styles.swipeHintText, { color: 'rgba(255,255,255,0.7)' }]}>{t('tapForNextLesson')}</AppText>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.swipeHint, { bottom: tabBarH + 12 }]}>
+            <View style={[styles.swipeHint, { bottom: tabBarH + 26 }]}>
               <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
               <AppText style={styles.swipeHintText}>{t('swipeHint')}</AppText>
             </View>
           )
+        )}
+
+        {/* Video watch progress bar — fixed strip just above the tab bar so it's
+            always visible and never covered by the tab bar seam. */}
+        {lesson.type === 'video' && (
+          <View style={[styles.progressTrack, { bottom: tabBarH }]} pointerEvents="none">
+            <View style={[styles.progressFill, { width: `${videoProgress * 100}%` }]} />
+          </View>
         )}
       </View>
 

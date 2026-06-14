@@ -3,7 +3,7 @@ import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SIZES } from '../utils/constants';
+import { COLORS, SIZES, TAB_BAR_HEIGHT } from '../utils/constants';
 import { useTabBar } from '../context/TabBarContext';
 import { useTranslation } from '../utils/useTranslation';
 import AppText from '../components/AppText';
@@ -29,7 +29,7 @@ const TabBar = ({ state, navigation }) => {
   const { t } = useTranslation();
 
   return (
-    <Animated.View style={[styles.tabBar, { paddingBottom: insets.bottom + 6, transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.tabBar, { height: TAB_BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom, transform: [{ translateY }] }]}>
       {TAB_ITEMS.map((item, index) => {
         const focused = state.index === index;
         const route = state.routes[index];
@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
-    paddingTop: 10,
     elevation: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
